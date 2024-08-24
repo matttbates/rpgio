@@ -179,9 +179,9 @@ class World {
         return maps[Pair(chunkX, chunkY)]?.get(Pair(x, y))
     }
 
-    private fun getEntity(x: Int, y: Int): Entity?{
+    private fun getEntities(x: Int, y: Int): List<Entity>{
         val (chunkX, chunkY) = getChunkCoords(x, y)
-        return entityMaps[Pair(chunkX, chunkY)]?.find { x == it.coords.first.toInt() && y == it.coords.second.toInt() }
+        return entityMaps[Pair(chunkX, chunkY)]?.filter { x == it.coords.first.toInt() && y == it.coords.second.toInt() }?: emptyList()
     }
 
     init {
@@ -272,9 +272,7 @@ class World {
         val result = arrayListOf<Entity>()
         for (y in fromY..toY) {
             for (x in fromX..toX) {
-                getEntity(x, y)?.let { entity ->
-                    result.add(entity)
-                }
+                result.addAll(getEntities(x, y))
             }
         }
         return result

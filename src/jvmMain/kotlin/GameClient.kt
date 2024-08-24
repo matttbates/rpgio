@@ -1,8 +1,6 @@
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.runtime.*
@@ -15,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import entities.Entity
 import kotlinx.coroutines.flow.Flow
 import entities.EntityPlayer
+import org.jetbrains.skia.impl.Log
 
 class GameClient(
     private val world: World
@@ -29,7 +28,9 @@ class GameClient(
     fun Display(){
         gameState?.let {
             val state by it.collectAsState(GameState())
-            Game(state)
+            Game(state){
+                gameState = null
+            }
         } ?: Login()
     }
 
@@ -59,7 +60,10 @@ class GameClient(
 
     @OptIn(ExperimentalComposeUiApi::class)
     @Composable
-    fun Game(gameState: GameState){
+    fun Game(
+        gameState: GameState,
+        onDisconnect: () -> Unit = {}
+    ){
         val requester = remember { FocusRequester() }
         Box(
             modifier = Modifier
@@ -92,12 +96,27 @@ class GameClient(
                 .fillMaxSize()
         ) {
             Column {
-                Text("Game logged in as player ${gameState.playerId}")
+                Row {
+                    Text("Game logged in as player ${gameState.playerId}")
+                    Button(
+                        onClick = {
+                            world.disconnect(gameState.playerId)
+                            onDisconnect()
+                        }
+                    ){
+                        Text("Logout")
+                    }
+                }
                 Text("Tick: ${gameState.tick}")
-                Text("Current position: ${world.getPlayer(gameState.playerId)?.coords}")
+                gameState.entities.filterIsInstance<EntityPlayer>().sortedBy { it.id }.forEach { player ->
+                    Text("Player ${player.id} at ${player.coords}")
+                }
                 val tiles = gameState.tiles
                 val player = gameState.entities.find { it is EntityPlayer && it.id == gameState.playerId } as EntityPlayer?
                 if(tiles.isNotEmpty() && player != null){
+                    val playerOffsetX = (tiles.first().size - 1) / 2
+                    val playerOffsetY = (tiles.size - 1) / 2
+
                     val (playerX, playerY) = player.coords
                     val displayXOffset = playerX % 1
                     val displayYOffset = playerY % 1
@@ -129,19 +148,20 @@ class GameClient(
                                 }
                             }
 
-                            gameState.entities.filterNot {
-                                it is EntityPlayer && it.id == gameState.playerId
-                            }.forEach {
-                                val (x, y) = it.coords
-                                val cellX = x * cellSize
-                                val cellY = y * cellSize
-                                Entity(it, cellX, cellY)
-                            }
                         }
-
-                        val offsetX = ((tiles.first().size - 1) * cellSize) / 2
-                        val offsetY = ((tiles.size - 1) * cellSize) / 2
-                        Entity(player, offsetX.toFloat(), offsetY.toFloat())
+                        gameState.entities.filterNot {
+                            it is EntityPlayer && it.id == gameState.playerId
+                        }.forEach {
+                            val (x, y) = it.coords
+                            //player coords are in the center of the screen
+                            //so we need to adjust the entity coords to be relative to the player
+                            val adjustedX = playerOffsetX - (playerX - x)
+                            val adjustedY = playerOffsetY - (playerY - y)
+                            val cellX = adjustedX * cellSize
+                            val cellY = adjustedY * cellSize
+                            Entity(it, cellX, cellY)
+                        }
+                        Entity(player, (playerOffsetX * cellSize).toFloat(), (playerOffsetY * cellSize).toFloat())
                     }
                 }
             }
