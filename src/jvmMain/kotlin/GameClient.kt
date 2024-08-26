@@ -13,6 +13,8 @@ import androidx.compose.ui.unit.dp
 import entities.Entity
 import kotlinx.coroutines.flow.Flow
 import entities.EntityPlayer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import org.jetbrains.skia.impl.Log
 
 class GameClient(
@@ -64,32 +66,17 @@ class GameClient(
         gameState: GameState,
         onDisconnect: () -> Unit = {}
     ){
+        val keysDown = remember { mutableStateOf<MutableSet<Key>>(HashSet()) }
         val requester = remember { FocusRequester() }
+        var disconnecting by remember { mutableStateOf(false) }
         Box(
             modifier = Modifier
                 .onKeyEvent {
-                    if(it.type == KeyEventType.KeyDown){
-                        return@onKeyEvent when (it.key) {
-                            Key.W -> {
-                                world.enqueueAction(gameState.playerId, Action.MovePlayer(0, -1))
-                                true
-                            }
-                            Key.A -> {
-                                world.enqueueAction(gameState.playerId, Action.MovePlayer(-1, 0))
-                                true
-                            }
-                            Key.S -> {
-                                world.enqueueAction(gameState.playerId, Action.MovePlayer(0, 1))
-                                true
-                            }
-                            Key.D -> {
-                                world.enqueueAction(gameState.playerId, Action.MovePlayer(1, 0))
-                                true
-                            }
-                            else -> false
-                        }
+                    when(it.type){
+                        KeyEventType.KeyDown -> keysDown.value.add(it.key)
+                        KeyEventType.KeyUp -> keysDown.value.remove(it.key)
                     }
-                    false
+                    true
                 }
                 .focusRequester(requester)
                 .focusable()
@@ -101,6 +88,7 @@ class GameClient(
                     Button(
                         onClick = {
                             world.disconnect(gameState.playerId)
+                            disconnecting = true
                             onDisconnect()
                         }
                     ){
@@ -166,6 +154,24 @@ class GameClient(
                 }
             }
         }
+
+        keysDown.value.forEach { key ->
+            when (key) {
+                Key.W -> {
+                    world.enqueueAction(gameState.playerId, Action.MovePlayer(0, -1))
+                }
+                Key.A -> {
+                    world.enqueueAction(gameState.playerId, Action.MovePlayer(-1, 0))
+                }
+                Key.S -> {
+                    world.enqueueAction(gameState.playerId, Action.MovePlayer(0, 1))
+                }
+                Key.D -> {
+                    world.enqueueAction(gameState.playerId, Action.MovePlayer(1, 0))
+                }
+            }
+        }
+
         LaunchedEffect(Unit) {
             requester.requestFocus()
         }
