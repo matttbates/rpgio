@@ -173,32 +173,56 @@ class GameClient(
                         }
                         Entity(player, (playerOffsetX * cellSize).toFloat(), (playerOffsetY * cellSize).toFloat())
 
-                        val deg = calculateAngle(playerPosition.value, pointerPosition.value)
+                        /*val deg = calculateAngle(playerPosition.value, pointerPosition.value)
                         println("angle: $deg")
                         world.enqueueAction(gameState.playerId, Action.RotateEntity(
                             id = gameState.playerId,
                             x = playerX,
                             y = playerY,
                             rotation = deg.takeUnless { it.isNaN() }?.toFloat()?:0f
-                        ))
-                    }
-                }
-            }
-        }
+                        ))*/
 
-        keysDown.value.forEach { key ->
-            when (key) {
-                Key.W -> {
-                    world.enqueueAction(gameState.playerId, Action.MovePlayer(0, -1))
-                }
-                Key.A -> {
-                    world.enqueueAction(gameState.playerId, Action.MovePlayer(-1, 0))
-                }
-                Key.S -> {
-                    world.enqueueAction(gameState.playerId, Action.MovePlayer(0, 1))
-                }
-                Key.D -> {
-                    world.enqueueAction(gameState.playerId, Action.MovePlayer(1, 0))
+                        var dX = 0
+                        var dY = 0
+                        keysDown.value.forEach { key ->
+                            when (key) {
+                                Key.W -> {
+                                    dY -= 1
+                                }
+                                Key.A -> {
+                                    dX -= 1
+                                }
+                                Key.S -> {
+                                    dY += 1
+                                }
+                                Key.D -> {
+                                    dX += 1
+                                }
+                            }
+                        }
+                        if(dX != 0 || dY != 0){
+                            world.enqueueAction(gameState.playerId, Action.MovePlayer(dX, dY))
+                        }
+                        val rotation = when{
+                            dX == 1 && dY == 0 -> 0f
+                            dX == 1 && dY == 1 -> 45f
+                            dX == 0 && dY == 1 -> 90f
+                            dX == -1 && dY == 1 -> 135f
+                            dX == -1 && dY == 0 -> 180f
+                            dX == -1 && dY == -1 -> 225f
+                            dX == 0 && dY == -1 -> 270f
+                            dX == 1 && dY == -1 -> 315f
+                            else -> null
+                        }
+                        rotation?.let {
+                            world.enqueueAction(gameState.playerId, Action.RotateEntity(
+                                id = gameState.playerId,
+                                x = playerX,
+                                y = playerY,
+                                rotation = it
+                            ))
+                        }
+                    }
                 }
             }
         }
