@@ -1,4 +1,6 @@
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
 import androidx.compose.material.Text
@@ -6,9 +8,16 @@ import androidx.compose.material.TextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import entities.Entity
 import kotlinx.coroutines.flow.Flow
@@ -16,6 +25,9 @@ import entities.EntityPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.skia.impl.Log
+import kotlin.math.abs
+import kotlin.math.atan
+import kotlin.math.tan
 
 class GameClient(
     private val world: World
@@ -67,8 +79,11 @@ class GameClient(
         onDisconnect: () -> Unit = {}
     ){
         val keysDown = remember { mutableStateOf<MutableSet<Key>>(HashSet()) }
+        val playerPosition = remember { mutableStateOf(0f to 0f) }
+        val pointerPosition = remember { mutableStateOf(0f to 0f) }
         val requester = remember { FocusRequester() }
         var disconnecting by remember { mutableStateOf(false) }
+        val player = gameState.entities.find { it is EntityPlayer && it.id == gameState.playerId } as EntityPlayer?
         Box(
             modifier = Modifier
                 .onKeyEvent {
@@ -77,6 +92,9 @@ class GameClient(
                         KeyEventType.KeyUp -> keysDown.value.remove(it.key)
                     }
                     true
+                }
+                .onPointerEvent(eventType = PointerEventType.Move){
+                    pointerPosition.value = with(it.changes.first().position){ x to y }
                 }
                 .focusRequester(requester)
                 .focusable()
@@ -97,10 +115,9 @@ class GameClient(
                 }
                 Text("Tick: ${gameState.tick}")
                 gameState.entities.filterIsInstance<EntityPlayer>().sortedBy { it.id }.forEach { player ->
-                    Text("Player ${player.id} at ${player.coords}")
+                    Text("Player ${player.id} at ${player.coords} facing ${player.rotation}")
                 }
                 val tiles = gameState.tiles
-                val player = gameState.entities.find { it is EntityPlayer && it.id == gameState.playerId } as EntityPlayer?
                 if(tiles.isNotEmpty() && player != null){
                     val playerOffsetX = (tiles.first().size - 1) / 2
                     val playerOffsetY = (tiles.size - 1) / 2
@@ -118,6 +135,11 @@ class GameClient(
                                     x = (-displayXOffset * cellSize).dp,
                                     y = (-displayYOffset * cellSize).dp
                                 )
+                                .background(Color.Cyan)
+                                .onGloballyPositioned {
+                                    val offset = it.localToWindow(Offset.Zero)
+                                    playerPosition.value = (it.size.width / 2) + offset.x to (it.size.height / 2) + offset.y
+                                }
                         ) {
                             tiles.forEachIndexed { r, row ->
                                 val rowY = r * cellSize
@@ -150,6 +172,15 @@ class GameClient(
                             Entity(it, cellX, cellY)
                         }
                         Entity(player, (playerOffsetX * cellSize).toFloat(), (playerOffsetY * cellSize).toFloat())
+
+                        val deg = calculateAngle(playerPosition.value, pointerPosition.value)
+                        println("angle: $deg")
+                        world.enqueueAction(gameState.playerId, Action.RotateEntity(
+                            id = gameState.playerId,
+                            x = playerX,
+                            y = playerY,
+                            rotation = deg.takeUnless { it.isNaN() }?.toFloat()?:0f
+                        ))
                     }
                 }
             }
@@ -177,6 +208,15 @@ class GameClient(
         }
     }
 
+    private fun calculateAngle(player: Pair<Float, Float>, pointer: Pair<Float, Float>): Float {
+        val (playerX, playerY) = player
+        val (pointerX, pointerY) = pointer
+        val o = pointerY - playerY
+        val a = pointerX - playerX
+        val angle = atan(o / a)
+        return Math.toDegrees(angle.toDouble()).toFloat() + (if (a < 0) 180 else 0)
+    }
+
     @Composable
     fun Entity(entity: Entity, x: Float, y: Float){
         Text(
@@ -187,6 +227,7 @@ class GameClient(
                     x = x.dp,
                     y = y.dp
                 )
+                .rotate(entity.rotation)
                 //.border(1.dp, MaterialTheme.colors.onSurface),
         )
     }

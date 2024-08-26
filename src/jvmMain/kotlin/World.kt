@@ -83,6 +83,7 @@ class World {
     private fun performAction(playerId: Int, action: Action){
         when(action){
             is Action.MovePlayer -> movePlayer(playerId, action)
+            is Action.RotateEntity -> rotateEntity(action)
         }
     }
 
@@ -240,6 +241,12 @@ class World {
         val newY = y + (action.dy * player.speed)
         moveEntity(player, Pair(newX, newY))
         setEntity(player)
+    }
+
+    private fun rotateEntity(action: Action.RotateEntity){
+        println("rotating entity ${action.id} to ${action.rotation}")
+        val chunk = getChunkCoords(action.x.toInt(), action.y.toInt())
+        entityMaps[chunk]?.find { it.id == action.id }?.rotation = action.rotation
     }
 
     private fun moveEntity(entity: Entity, to: Pair<Float, Float>): Boolean {
