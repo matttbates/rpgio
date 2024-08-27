@@ -190,7 +190,7 @@ class World {
             for (x in 0 until map0Raw[y].length) {
                 when (map0Raw[y][x]) {
                     '#' -> TilePath()
-                    '.' -> TileDirt()
+                    '.' -> TileGrass()
                     'B' -> TileBed()
                     else -> null
                 }?.let{tile ->
@@ -258,6 +258,7 @@ class World {
             return false
         }
         entity.coords = to
+        entity.animI = (entity.animI + 1) % 8
         return true
     }
 

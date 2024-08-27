@@ -5,4 +5,6 @@ interface Entity {
     var coords: Pair<Float, Float>
     var rotation: Float
     val appearance: Char
+    fun getSprite(): String
+    var animI: Int
 }

@@ -1,7 +1,6 @@
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
 import androidx.compose.material.Text
@@ -19,18 +18,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import entities.Entity
 import kotlinx.coroutines.flow.Flow
 import entities.EntityPlayer
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-import org.jetbrains.skia.impl.Log
-import kotlin.math.abs
+import tiles.TileGrass
+import tiles.TileWall
 import kotlin.math.atan
-import kotlin.math.tan
 
 class GameClient(
     private val world: World
@@ -156,6 +153,7 @@ class GameClient(
                                     val cellX = c * cellSize
                                     Text(
                                         text = tile.appearance.toString(),
+                                        textAlign = TextAlign.Center,
                                         modifier = Modifier
                                             .size(cellSize.dp)
                                             .offset(
@@ -164,12 +162,24 @@ class GameClient(
                                             )
                                             //.border(1.dp, MaterialTheme.colors.onSurface),
                                     )
+                                    if(tile is TileWall || tile is TileGrass){
+                                        Image(
+                                            painter = painterResource("tile_${tile.sprite}.png"),
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(cellSize.dp)
+                                                .offset(
+                                                    x = cellX.dp,
+                                                    y = rowY.dp
+                                                )
+                                        )
+                                    }
                                 }
                             }
 
                         }
-                        gameState.entities.filterNot {
-                            it is EntityPlayer && it.id == gameState.playerId
+                        gameState.entities.sortedBy {
+                            it.coords.second
                         }.forEach {
                             val (x, y) = it.coords
                             //player coords are in the center of the screen
@@ -180,7 +190,7 @@ class GameClient(
                             val cellY = adjustedY * cellSize
                             Entity(it, cellX, cellY)
                         }
-                        Entity(player, (playerOffsetX * cellSize).toFloat(), (playerOffsetY * cellSize).toFloat())
+                        //Entity(player, (playerOffsetX * cellSize).toFloat(), (playerOffsetY * cellSize).toFloat())
 
                         /*val deg = calculateAngle(playerPosition.value, pointerPosition.value)
                         println("angle: $deg")
@@ -252,7 +262,7 @@ class GameClient(
 
     @Composable
     fun Entity(entity: Entity, x: Float, y: Float){
-        Text(
+        /*Text(
             text = entity.appearance.toString(),
             modifier = Modifier
                 .size(cellSize.dp)
@@ -262,6 +272,24 @@ class GameClient(
                 )
                 .rotate(entity.rotation)
                 //.border(1.dp, MaterialTheme.colors.onSurface),
+        )*/
+
+        val direction = when(entity.rotation){
+            in 0f .. 89f -> "right"
+            90f -> "down"
+            in 91f .. 269f -> "left"
+            270f -> "up"
+            else -> "right"
+        }
+        Image(
+            painter = painterResource("walk_${direction}_${entity.animI}.png"),
+            contentDescription = null,
+            modifier = Modifier
+                .size(width = cellSize.dp, height = cellSize.dp)
+                .offset(
+                    x = x.dp,
+                    y = y.dp
+                )
         )
     }
 
