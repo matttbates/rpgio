@@ -249,8 +249,12 @@ class World {
     }
 
     private fun moveEntity(entity: Entity, to: Pair<Float, Float>): Boolean {
-        val newTile = getTile((to.first + 0.5f).toInt(), (to.second + 0.5f).toInt(), 1)
-        if (newTile != null) {
+        val destTile = getTile((to.first + 0.5f).toInt(), (to.second + 0.5f).toInt(), 1)
+        if (destTile != null) {
+            return false
+        }
+        val entityAtDestination = getEntities(to.first.toInt(), to.second.toInt()).find { it.id != entity.id }
+        if (entityAtDestination != null) {
             return false
         }
         entity.coords = to
