@@ -1,4 +1,5 @@
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.layout.*
@@ -6,8 +7,10 @@ import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -127,15 +130,21 @@ class GameClient(
                     val displayYOffset = playerY % 1
                     val width = tiles.first().size
                     val height = tiles.size
-                    Box{
+                    Box(
+                        modifier = Modifier
+                            .padding(cellSize.dp)
+                            .size(width = ((width - 1) * cellSize).dp, height = ((height - 1) * cellSize).dp)
+                            .border(1.dp, Color.Black)
+                            .clipToBounds()
+                    ){
                         Box(
                             modifier = Modifier
                                 .size(width = (width * cellSize).dp, height = (height * cellSize).dp)
+                                .align(Alignment.Center)
                                 .offset(
                                     x = (-displayXOffset * cellSize).dp,
                                     y = (-displayYOffset * cellSize).dp
                                 )
-                                .background(Color.Cyan)
                                 .onGloballyPositioned {
                                     val offset = it.localToWindow(Offset.Zero)
                                     playerPosition.value = (it.size.width / 2) + offset.x to (it.size.height / 2) + offset.y

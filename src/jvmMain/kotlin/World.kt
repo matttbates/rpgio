@@ -244,7 +244,6 @@ class World {
     }
 
     private fun rotateEntity(action: Action.RotateEntity){
-        println("rotating entity ${action.id} to ${action.rotation}")
         val chunk = getChunkCoords(action.x.toInt(), action.y.toInt())
         entityMaps[chunk]?.find { it.id == action.id }?.rotation = action.rotation
     }
