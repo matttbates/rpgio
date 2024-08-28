@@ -19,18 +19,7 @@ class World {
     companion object {
         private const val CHUNK_SIZE = 20
         const val TPS = 20
-        private val map0Raw = arrayOf(
-            "##########",
-            "#........#",
-            "#........#",
-            "#........#",
-            "#........#",
-            "#........#",
-            "#...B....#",
-            "#.....~~~#",
-            "#....~~~.#",
-            "##########"
-        )
+        private val map0Raw = createBitmapFromFile("src/jvmMain/resources/map.png")
         private val map1Raw = arrayOf(
             "          ",
             "    ====  ",
@@ -43,6 +32,7 @@ class World {
             "          ",
             "          "
         )
+
         private val defaultTile = TileGrass()
     }
 
@@ -191,25 +181,23 @@ class World {
     }
 
     init {
-        for (y in map0Raw.indices) {
-            for (x in 0 until map0Raw[y].length) {
-                when (map0Raw[y][x]) {
-                    '#' -> TilePath()
-                    '.' -> TileGrass()
-                    'B' -> TileBed()
-                    '~' -> TileWater()
-                    else -> null
-                }?.let{tile ->
-                    setTile(x, y, 0, tile)
-                    if (tile is TileBed) {
-                        spawnLocations.add(Pair(x, y))
+        map0Raw?.let { imageBitmap ->
+            val buffer = IntArray(imageBitmap.width * imageBitmap.height)
+            imageBitmap.readPixels(buffer)
+            for (y in 0 until imageBitmap.height) {
+                for (x in 0 until imageBitmap.width) {
+                    when (buffer[y * imageBitmap.width + x]) {
+                        0xFF000000.toInt() -> TileGrass()
+                        0xFF0000FF.toInt() -> TileWater()
+                        0xFF00FF00.toInt() -> TilePath()
+                        0xFFFF0000.toInt() -> TileBed()
+                        else -> null
+                    }?.let { tile ->
+                        setTile(x, y, 0, tile)
+                        if (tile is TileBed) {
+                            spawnLocations.add(Pair(x, y))
+                        }
                     }
-                    /*for (i in 1 .. 100){
-                        setTile(x + (i*20), y, 0, tile)
-                        setTile(x - (i*20), y, 0, tile)
-                        setTile(x, y + (i*20), 0, tile)
-                        setTile(x, y - (i*20), 0, tile)
-                    }*/
                 }
             }
         }
