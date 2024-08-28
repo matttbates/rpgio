@@ -155,9 +155,9 @@ class World {
                     when (buffer[y * imageBitmap.width + x]) {
                         0xFF00FF00.toInt() -> TileGrass()
                         0xFF0000FF.toInt() -> TileWater()
-                        0xFF000000.toInt() -> TilePath()
+                        0xFF00FFFF.toInt() -> TilePath()
                         0xFFFF0000.toInt() -> TileBed()
-                        0xFF00FFFF.toInt() -> TileWall()
+                        0xFF000000.toInt() -> TileWall()
                         else -> null
                     }?.let { tile ->
                         setTile(x, y, tile)
