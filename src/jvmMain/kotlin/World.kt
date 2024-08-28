@@ -43,7 +43,11 @@ class World {
             "          ",
             "          "
         )
+        private val defaultTile = TileGrass()
     }
+
+    private var displaySize = Pair(0, 0)
+    fun getDisplaySize() = displaySize
 
     private val clientStates = arrayListOf<MutableStateFlow<GameState>>()
     private val pendingActions = hashMapOf<Int, ArrayList<Action>>()
@@ -52,6 +56,7 @@ class World {
         rX: Int = 12,
         rY: Int = 4
     ) {
+        displaySize = Pair(rX * 2 + 1, rY * 2 + 1)
         CoroutineScope(Dispatchers.IO).launch {
             var tick = 0
             val sleepMillis = 1000 / TPS
@@ -270,7 +275,7 @@ class World {
         for (y in fromY..toY) {
             val row = ArrayList<Tile>()
             for (x in fromX..toX) {
-                val tile = getTile(x, y, 1) ?: getTile(x, y, 0) ?: TileGrass()
+                val tile = getTile(x, y, 1) ?: getTile(x, y, 0) ?: defaultTile
                 row.add(tile)
             }
             result.add(row)

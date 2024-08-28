@@ -15,6 +15,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
@@ -25,29 +27,33 @@ import androidx.compose.ui.unit.dp
 import entities.Entity
 import kotlinx.coroutines.flow.Flow
 import entities.EntityPlayer
-import tiles.TileAir
-import tiles.TileGrass
-import tiles.TileWall
-import tiles.TileWater
+import kotlinx.coroutines.flow.map
+import tiles.*
 import kotlin.math.atan
 
 class GameClient(
     private val world: World
 ){
     private var gameState: Flow<GameState>? by mutableStateOf(null)
+    private var isLoggedIn by mutableStateOf(false)
 
     companion object {
         private const val cellSize = 20
+        private val painterMap = mutableMapOf<String, Painter>()
     }
 
     @Composable
     fun Display(){
-        gameState?.let {
-            val state by it.collectAsState(GameState())
-            Game(state){
-                gameState = null
-            }
-        } ?: Login()
+        println("Rendering display")
+        if(isLoggedIn){
+            Game(
+                onDisconnect = {
+                    isLoggedIn = false
+                }
+            )
+        } else {
+            Login()
+        }
     }
 
     @Composable
@@ -64,6 +70,7 @@ class GameClient(
                 onClick = {
                     input.toInt().let { playerId ->
                         gameState = world.connect(playerId)
+                        isLoggedIn = true
                     }
                 },
                 enabled = input.isNotEmpty() && input.toIntOrNull() != null
@@ -77,9 +84,9 @@ class GameClient(
     @OptIn(ExperimentalComposeUiApi::class)
     @Composable
     fun Game(
-        gameState: GameState,
         onDisconnect: () -> Unit = {}
     ){
+        val gameState by gameState?.collectAsState(GameState())?:return
         val keysDown = remember { mutableStateOf<MutableSet<Key>>(HashSet()) }
         val playerPosition = remember { mutableStateOf(0f to 0f) }
         val pointerPosition = remember { mutableStateOf(0f to 0f) }
@@ -119,16 +126,14 @@ class GameClient(
                 gameState.entities.filterIsInstance<EntityPlayer>().sortedBy { it.id }.forEach { player ->
                     Text("Player ${player.id} at ${player.coords} facing ${player.rotation}")
                 }*/
-                val tiles = gameState.tiles
-                if(tiles.isNotEmpty() && player != null){
-                    val playerOffsetX = (tiles.first().size - 1) / 2
-                    val playerOffsetY = (tiles.size - 1) / 2
+                val (width, height) = world.getDisplaySize()
+                if(player != null){
+                    val playerOffsetX = (width - 1) / 2
+                    val playerOffsetY = (height - 1) / 2
 
                     val (playerX, playerY) = player.coords
                     val displayXOffset = playerX % 1
                     val displayYOffset = playerY % 1
-                    val width = tiles.first().size
-                    val height = tiles.size
                     Box(
                         modifier = Modifier
                             .padding(cellSize.dp)
@@ -148,37 +153,8 @@ class GameClient(
                                     val offset = it.localToWindow(Offset.Zero)
                                     playerPosition.value = (it.size.width / 2) + offset.x to (it.size.height / 2) + offset.y
                                 }
-                        ) {
-                            tiles.forEachIndexed { r, row ->
-                                val rowY = r * cellSize
-                                row.forEachIndexed { c, tile ->
-                                    val cellX = c * cellSize
-                                    Text(
-                                        text = tile.appearance.toString(),
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier
-                                            .size(cellSize.dp)
-                                            .offset(
-                                                x = cellX.dp,
-                                                y = rowY.dp
-                                            )
-                                            //.border(1.dp, MaterialTheme.colors.onSurface),
-                                    )
-                                    if(tile is TileWall || tile is TileGrass || tile is TileWater){
-                                        Image(
-                                            painter = painterResource("tile_${tile.sprite}.png"),
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .size(cellSize.dp)
-                                                .offset(
-                                                    x = cellX.dp,
-                                                    y = rowY.dp
-                                                )
-                                        )
-                                    }
-                                }
-                            }
-
+                        ){
+                            Tiles(tiles = gameState.tiles)
                         }
                         gameState.entities.sortedBy {
                             it.coords.second
@@ -250,6 +226,48 @@ class GameClient(
 
         LaunchedEffect(Unit) {
             requester.requestFocus()
+        }
+    }
+
+    @Composable
+    private fun Tiles(
+        modifier: Modifier = Modifier,
+        tiles: List<List<Tile>>
+    ){
+        Box(
+            modifier = modifier
+        ) {
+            tiles.forEachIndexed { r, row ->
+                val rowY = r * cellSize
+                row.forEachIndexed { c, tile ->
+                    val cellX = c * cellSize
+
+                    if(tile is TileWall || tile is TileGrass || tile is TileWater){
+                        Image(
+                            painter = with("tile_${tile.sprite}.png"){ painterMap[this]?:painterResource(this).also { painterMap[this] = it } },
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(cellSize.dp)
+                                .offset(
+                                    x = cellX.dp,
+                                    y = rowY.dp
+                                )
+                        )
+                    }else{
+                        Text(
+                            text = tile.appearance.toString(),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .size(cellSize.dp)
+                                .offset(
+                                    x = cellX.dp,
+                                    y = rowY.dp
+                                )
+                        )
+                    }
+                }
+            }
+
         }
     }
 
