@@ -9,31 +9,17 @@ import tiles.*
 
 class World {
     //key is the furthest distance from the origin within the chunk
-    private val tiles0maps = hashMapOf<Pair<Int, Int>, HashMap<Pair<Int, Int>, Tile>>()
-    private val tiles1maps = hashMapOf<Pair<Int, Int>, HashMap<Pair<Int, Int>, Tile>>()
+    private val tilesMaps = hashMapOf<Pair<Int, Int>, HashMap<Pair<Int, Int>, Tile>>()
     private val entityMaps = hashMapOf<Pair<Int, Int>, ArrayList<Entity>>()
 
-    private val players0 = hashMapOf<Int, Pair<Pair<Int, Int>, EntityPlayer>>()
     private val spawnLocations = arrayListOf<Pair<Int, Int>>()
 
     companion object {
         private const val CHUNK_SIZE = 20
         const val TPS = 20
-        private val map0Raw = createBitmapFromFile("src/jvmMain/resources/map.png")
-        private val map1Raw = arrayOf(
-            "          ",
-            "    ====  ",
-            "       =  ",
-            "    ====  ",
-            "          ",
-            "          ",
-            "          ",
-            "          ",
-            "          ",
-            "          "
-        )
+        private val mapRaw = createBitmapFromFile("src/jvmMain/resources/map.png")
 
-        private val defaultTile = TileGrass()
+        private val defaultTile = TileWater()
     }
 
     private var displaySize = Pair(0, 0)
@@ -113,7 +99,7 @@ class World {
 
     private fun spawnNewPlayer(id: Int): EntityPlayer? {
         val emptySpawns = spawnLocations.filter { (x, y) ->
-            getTile(x, y, 1) == null
+            getEntities(x, y).isEmpty()
         }
         if (emptySpawns.isEmpty()) {
             return null
@@ -135,14 +121,9 @@ class World {
         return Pair((x / CHUNK_SIZE) + qX, (y / CHUNK_SIZE) + qY)
     }
 
-    private fun setTile(x: Int, y: Int, z: Int, tile: Tile){
+    private fun setTile(x: Int, y: Int, tile: Tile){
         val (chunkX, chunkY) = getChunkCoords(x, y)
-        val maps = when(z){
-            0 -> tiles0maps
-            1 -> tiles1maps
-            else -> return
-        }
-        maps[Pair(chunkX, chunkY)] = (maps[Pair(chunkX, chunkY)] ?: hashMapOf()).apply {
+        tilesMaps[Pair(chunkX, chunkY)] = (tilesMaps[Pair(chunkX, chunkY)] ?: hashMapOf()).apply {
             this[Pair(x, y)] = tile
         }
     }
@@ -155,24 +136,9 @@ class World {
         }
     }
 
-    private fun removeTile(x: Int, y: Int, z: Int){
+    private fun getTile(x: Int, y: Int): Tile?{
         val (chunkX, chunkY) = getChunkCoords(x, y)
-        val maps = when(z){
-            0 -> tiles0maps
-            1 -> tiles1maps
-            else -> return
-        }
-        maps[Pair(chunkX, chunkY)]?.remove(Pair(x, y))
-    }
-
-    private fun getTile(x: Int, y: Int, z: Int): Tile?{
-        val (chunkX, chunkY) = getChunkCoords(x, y)
-        val maps = when(z){
-            0 -> tiles0maps
-            1 -> tiles1maps
-            else -> return null
-        }
-        return maps[Pair(chunkX, chunkY)]?.get(Pair(x, y))
+        return tilesMaps[Pair(chunkX, chunkY)]?.get(Pair(x, y))
     }
 
     private fun getEntities(x: Int, y: Int): List<Entity>{
@@ -181,34 +147,24 @@ class World {
     }
 
     init {
-        map0Raw?.let { imageBitmap ->
+        mapRaw?.let { imageBitmap ->
             val buffer = IntArray(imageBitmap.width * imageBitmap.height)
             imageBitmap.readPixels(buffer)
             for (y in 0 until imageBitmap.height) {
                 for (x in 0 until imageBitmap.width) {
                     when (buffer[y * imageBitmap.width + x]) {
-                        0xFF000000.toInt() -> TileGrass()
+                        0xFF00FF00.toInt() -> TileGrass()
                         0xFF0000FF.toInt() -> TileWater()
-                        0xFF00FF00.toInt() -> TilePath()
+                        0xFF000000.toInt() -> TilePath()
                         0xFFFF0000.toInt() -> TileBed()
+                        0xFF00FFFF.toInt() -> TileWall()
                         else -> null
                     }?.let { tile ->
-                        setTile(x, y, 0, tile)
+                        setTile(x, y, tile)
                         if (tile is TileBed) {
                             spawnLocations.add(Pair(x, y))
                         }
                     }
-                }
-            }
-        }
-
-        for (y in map1Raw.indices) {
-            for (x in 0 until map1Raw[y].length) {
-                when (map1Raw[y][x]) {
-                    '=' -> TileWall()
-                    else -> null
-                }?.let { tile ->
-                    setTile(x, y, 1, tile)
                 }
             }
         }
@@ -243,8 +199,8 @@ class World {
     }
 
     private fun moveEntity(entity: Entity, to: Pair<Float, Float>): Boolean {
-        val destTile = getTile((to.first + 0.5f).toInt(), (to.second + 0.5f).toInt(), 1)
-        if (destTile != null) {
+        val destTile = getTile((to.first + 0.5f).toInt(), (to.second + 0.5f).toInt())
+        if (destTile?.isSolid != false) {
             return false
         }
         val entityAtDestination = getEntities(to.first.toInt(), to.second.toInt()).find { it.id != entity.id }
@@ -263,7 +219,7 @@ class World {
         for (y in fromY..toY) {
             val row = ArrayList<Tile>()
             for (x in fromX..toX) {
-                val tile = getTile(x, y, 1) ?: getTile(x, y, 0) ?: defaultTile
+                val tile = getTile(x, y) ?: defaultTile
                 row.add(tile)
             }
             result.add(row)
