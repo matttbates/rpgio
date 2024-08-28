@@ -27,8 +27,8 @@ class World {
             "#........#",
             "#........#",
             "#...B....#",
-            "#........#",
-            "#........#",
+            "#.....~~~#",
+            "#....~~~.#",
             "##########"
         )
         private val map1Raw = arrayOf(
@@ -192,6 +192,7 @@ class World {
                     '#' -> TilePath()
                     '.' -> TileGrass()
                     'B' -> TileBed()
+                    '~' -> TileWater()
                     else -> null
                 }?.let{tile ->
                     setTile(x, y, 0, tile)
@@ -269,7 +270,7 @@ class World {
         for (y in fromY..toY) {
             val row = ArrayList<Tile>()
             for (x in fromX..toX) {
-                val tile = getTile(x, y, 1) ?: getTile(x, y, 0) ?: TileAir()
+                val tile = getTile(x, y, 1) ?: getTile(x, y, 0) ?: TileGrass()
                 row.add(tile)
             }
             result.add(row)

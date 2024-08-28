@@ -9,23 +9,21 @@ import androidx.compose.ui.window.application
 @Composable
 @Preview
 fun App(
-    world: World = World(),
+    world: World,
     client: GameClient = GameClient(world)
 ) {
-    LaunchedEffect(Unit) {
-        world.start(
-            rX = 8,
-            rY = 8
-        )
-    }
-
     MaterialTheme {
         client.Display()
     }
 }
 
 fun main() = application {
+    val world = World()
+    world.start(8, 8)
     Window(onCloseRequest = ::exitApplication) {
-        App()
+        App(world = world)
     }
+    /*Window(onCloseRequest = ::exitApplication) {
+        App(world = world)
+    }*/
 }

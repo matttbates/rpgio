@@ -25,8 +25,10 @@ import androidx.compose.ui.unit.dp
 import entities.Entity
 import kotlinx.coroutines.flow.Flow
 import entities.EntityPlayer
+import tiles.TileAir
 import tiles.TileGrass
 import tiles.TileWall
+import tiles.TileWater
 import kotlin.math.atan
 
 class GameClient(
@@ -113,10 +115,10 @@ class GameClient(
                         Text("Logout")
                     }
                 }
-                Text("Tick: ${gameState.tick}")
+                /*Text("Tick: ${gameState.tick}")
                 gameState.entities.filterIsInstance<EntityPlayer>().sortedBy { it.id }.forEach { player ->
                     Text("Player ${player.id} at ${player.coords} facing ${player.rotation}")
-                }
+                }*/
                 val tiles = gameState.tiles
                 if(tiles.isNotEmpty() && player != null){
                     val playerOffsetX = (tiles.first().size - 1) / 2
@@ -162,7 +164,7 @@ class GameClient(
                                             )
                                             //.border(1.dp, MaterialTheme.colors.onSurface),
                                     )
-                                    if(tile is TileWall || tile is TileGrass){
+                                    if(tile is TileWall || tile is TileGrass || tile is TileWater){
                                         Image(
                                             painter = painterResource("tile_${tile.sprite}.png"),
                                             contentDescription = null,
