@@ -197,8 +197,11 @@ class GameClient(
                                 }
                             }
                         }
-                        if(dX != 0 || dY != 0){
-                            world.enqueueAction(gameState.playerId, Action.MovePlayer(dX, dY))
+                        if(dX != 0){
+                            world.enqueueAction(gameState.playerId, Action.MovePlayer(dX, 0))
+                        }
+                        if(dY != 0){
+                            world.enqueueAction(gameState.playerId, Action.MovePlayer(0, dY))
                         }
                         val rotation = when{
                             dX == 1 && dY == 0 -> 0f
