@@ -88,13 +88,19 @@ class GameClient(
         val playerPosition = remember { mutableStateOf(0f to 0f) }
         val pointerPosition = remember { mutableStateOf(0f to 0f) }
         val requester = remember { FocusRequester() }
+        var showMenu by remember { mutableStateOf(false) }
         var disconnecting by remember { mutableStateOf(false) }
         val player = gameState.entities.find { it is EntityPlayer && it.id == gameState.playerId } as EntityPlayer?
         Box(
             modifier = Modifier
                 .onKeyEvent {
                     when(it.type){
-                        KeyEventType.KeyDown -> keysDown.value.add(it.key)
+                        KeyEventType.KeyDown -> {
+                            keysDown.value.add(it.key)
+                            when(it.key){
+                                Key.E -> showMenu = !showMenu
+                            }
+                        }
                         KeyEventType.KeyUp -> keysDown.value.remove(it.key)
                     }
                     true
@@ -107,22 +113,6 @@ class GameClient(
                 .fillMaxSize()
         ) {
             Column {
-                Row {
-                    Text("Game logged in as player ${gameState.playerId}")
-                    Button(
-                        onClick = {
-                            world.disconnect(gameState.playerId)
-                            disconnecting = true
-                            onDisconnect()
-                        }
-                    ){
-                        Text("Logout")
-                    }
-                }
-                /*Text("Tick: ${gameState.tick}")
-                gameState.entities.filterIsInstance<EntityPlayer>().sortedBy { it.id }.forEach { player ->
-                    Text("Player ${player.id} at ${player.coords} facing ${player.rotation}")
-                }*/
                 val (width, height) = world.getDisplaySize()
                 if(player != null){
                     val playerOffsetX = (width - 1) / 2
@@ -165,16 +155,6 @@ class GameClient(
                             val cellY = adjustedY * cellSize
                             Entity(it, cellX, cellY)
                         }
-                        //Entity(player, (playerOffsetX * cellSize).toFloat(), (playerOffsetY * cellSize).toFloat())
-
-                        /*val deg = calculateAngle(playerPosition.value, pointerPosition.value)
-                        println("angle: $deg")
-                        world.enqueueAction(gameState.playerId, Action.RotateEntity(
-                            id = gameState.playerId,
-                            x = playerX,
-                            y = playerY,
-                            rotation = deg.takeUnless { it.isNaN() }?.toFloat()?:0f
-                        ))*/
 
                         var dX = 0
                         var dY = 0
@@ -224,8 +204,36 @@ class GameClient(
             }
         }
 
+        if(showMenu){
+            Menu(
+                gameState = gameState,
+                onDisconnect = {
+                    world.disconnect(gameState.playerId)
+                    disconnecting = true
+                    onDisconnect()
+                }
+            )
+        }
+
         LaunchedEffect(Unit) {
             requester.requestFocus()
+        }
+    }
+
+    @Composable
+    private fun Menu(
+        gameState: GameState,
+        onDisconnect: () -> Unit
+    ){
+        Column {
+            Row {
+                Text("Game logged in as player ${gameState.playerId}")
+                Button(
+                    onClick = onDisconnect
+                ) {
+                    Text("Logout")
+                }
+            }
         }
     }
 
@@ -269,18 +277,6 @@ class GameClient(
 
     @Composable
     fun Entity(entity: Entity, x: Float, y: Float){
-        /*Text(
-            text = entity.appearance.toString(),
-            modifier = Modifier
-                .size(cellSize.dp)
-                .offset(
-                    x = x.dp,
-                    y = y.dp
-                )
-                .rotate(entity.rotation)
-                //.border(1.dp, MaterialTheme.colors.onSurface),
-        )*/
-
         val direction = when(entity.rotation){
             in 0f .. 89f -> "right"
             90f -> "down"
