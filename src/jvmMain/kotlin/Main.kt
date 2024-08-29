@@ -3,7 +3,10 @@ import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 
 @Composable
@@ -19,8 +22,19 @@ fun App(
 
 fun main() = application {
     val world = World()
-    world.start(8, 8)
-    Window(onCloseRequest = ::exitApplication) {
+    world.start(12, 8)
+    val (w, h) = world.getDisplaySize()
+    val screenW = ((w - 2) * GameClient.cellSize).dp
+    val screenH = ((h - 2) * GameClient.cellSize).dp
+    val titleHeight = 35.dp
+    val mysteryWidth = 12.dp
+    Window(
+        onCloseRequest = ::exitApplication,
+        state = WindowState(
+            size = DpSize(screenW + mysteryWidth, screenH + titleHeight),
+        ),
+        resizable = false
+    ) {
         App(world = world)
     }
     /*Window(onCloseRequest = ::exitApplication) {

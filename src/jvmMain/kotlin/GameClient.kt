@@ -1,4 +1,5 @@
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
@@ -35,7 +36,7 @@ class GameClient(
     private var isLoggedIn by mutableStateOf(false)
 
     companion object {
-        private const val cellSize = 20
+        const val cellSize = 20
         private val painterMap = mutableMapOf<String, Painter>()
     }
 
@@ -85,8 +86,6 @@ class GameClient(
     ){
         val gameState by gameState?.collectAsState(GameState())?:return
         val keysDown = remember { mutableStateOf<MutableSet<Key>>(HashSet()) }
-        val playerPosition = remember { mutableStateOf(0f to 0f) }
-        val pointerPosition = remember { mutableStateOf(0f to 0f) }
         val requester = remember { FocusRequester() }
         var showMenu by remember { mutableStateOf(false) }
         var disconnecting by remember { mutableStateOf(false) }
@@ -105,100 +104,98 @@ class GameClient(
                     }
                     true
                 }
-                .onPointerEvent(eventType = PointerEventType.Move){
-                    pointerPosition.value = with(it.changes.first().position){ x to y }
-                }
                 .focusRequester(requester)
                 .focusable()
                 .fillMaxSize()
         ) {
-            Column {
-                val (width, height) = world.getDisplaySize()
-                if(player != null){
-                    val playerOffsetX = (width - 1) / 2
-                    val playerOffsetY = (height - 1) / 2
+            val (width, height) = world.getDisplaySize()
+            if (player != null) {
+                val playerOffsetX = (width - 1) / 2
+                val playerOffsetY = (height - 1) / 2
 
-                    val (playerX, playerY) = player.coords
-                    val displayXOffset = playerX % 1
-                    val displayYOffset = playerY % 1
+                val (playerX, playerY) = player.coords
+                val displayXOffset = playerX % 1
+                val displayYOffset = playerY % 1
+                Box(
+                    modifier = Modifier
+                        .size(width = ((width - 2) * cellSize).dp, height = ((height - 2) * cellSize).dp)
+                        .clipToBounds()
+                        .offset(
+                            x = -cellSize.dp,
+                            y = -cellSize.dp
+                        )
+                ) {
                     Box(
                         modifier = Modifier
-                            .padding(cellSize.dp)
-                            .size(width = ((width - 1) * cellSize).dp, height = ((height - 1) * cellSize).dp)
-                            .border(1.dp, Color.Black)
-                            .clipToBounds()
-                    ){
-                        Box(
-                            modifier = Modifier
-                                .size(width = (width * cellSize).dp, height = (height * cellSize).dp)
-                                .align(Alignment.Center)
-                                .offset(
-                                    x = (-displayXOffset * cellSize).dp,
-                                    y = (-displayYOffset * cellSize).dp
-                                )
-                                .onGloballyPositioned {
-                                    val offset = it.localToWindow(Offset.Zero)
-                                    playerPosition.value = (it.size.width / 2) + offset.x to (it.size.height / 2) + offset.y
-                                }
-                        ){
-                            Tiles(tiles = gameState.tiles)
-                        }
-                        gameState.entities.sortedBy {
-                            it.coords.second
-                        }.forEach {
-                            val (x, y) = it.coords
-                            //player coords are in the center of the screen
-                            //so we need to adjust the entity coords to be relative to the player
-                            val adjustedX = playerOffsetX - (playerX - x)
-                            val adjustedY = playerOffsetY - (playerY - y)
-                            val cellX = adjustedX * cellSize
-                            val cellY = adjustedY * cellSize
-                            Entity(it, cellX, cellY)
-                        }
+                            .size(width = (width * cellSize).dp, height = (height * cellSize).dp)
+                            .align(Alignment.Center)
+                            .offset(
+                                x = (-displayXOffset * cellSize).dp,
+                                y = (-displayYOffset * cellSize).dp
+                            )
+                    ) {
+                        Tiles(tiles = gameState.tiles)
+                    }
+                    gameState.entities.sortedBy {
+                        it.coords.second
+                    }.forEach {
+                        val (x, y) = it.coords
+                        //player coords are in the center of the screen
+                        //so we need to adjust the entity coords to be relative to the player
+                        val adjustedX = playerOffsetX - (playerX - x)
+                        val adjustedY = playerOffsetY - (playerY - y)
+                        val cellX = adjustedX * cellSize
+                        val cellY = adjustedY * cellSize
+                        Entity(it, cellX, cellY)
+                    }
 
-                        var dX = 0
-                        var dY = 0
-                        keysDown.value.forEach { key ->
-                            when (key) {
-                                Key.W -> {
-                                    dY -= 1
-                                }
-                                Key.A -> {
-                                    dX -= 1
-                                }
-                                Key.S -> {
-                                    dY += 1
-                                }
-                                Key.D -> {
-                                    dX += 1
-                                }
+                    var dX = 0
+                    var dY = 0
+                    keysDown.value.forEach { key ->
+                        when (key) {
+                            Key.W -> {
+                                dY -= 1
+                            }
+
+                            Key.A -> {
+                                dX -= 1
+                            }
+
+                            Key.S -> {
+                                dY += 1
+                            }
+
+                            Key.D -> {
+                                dX += 1
                             }
                         }
-                        if(dX != 0){
-                            world.enqueueAction(gameState.playerId, Action.MovePlayer(dX, 0))
-                        }
-                        if(dY != 0){
-                            world.enqueueAction(gameState.playerId, Action.MovePlayer(0, dY))
-                        }
-                        val rotation = when{
-                            dX == 1 && dY == 0 -> 0f
-                            dX == 1 && dY == 1 -> 45f
-                            dX == 0 && dY == 1 -> 90f
-                            dX == -1 && dY == 1 -> 135f
-                            dX == -1 && dY == 0 -> 180f
-                            dX == -1 && dY == -1 -> 225f
-                            dX == 0 && dY == -1 -> 270f
-                            dX == 1 && dY == -1 -> 315f
-                            else -> null
-                        }
-                        rotation?.let {
-                            world.enqueueAction(gameState.playerId, Action.RotateEntity(
+                    }
+                    if (dX != 0) {
+                        world.enqueueAction(gameState.playerId, Action.MovePlayer(dX, 0))
+                    }
+                    if (dY != 0) {
+                        world.enqueueAction(gameState.playerId, Action.MovePlayer(0, dY))
+                    }
+                    val rotation = when {
+                        dX == 1 && dY == 0 -> 0f
+                        dX == 1 && dY == 1 -> 45f
+                        dX == 0 && dY == 1 -> 90f
+                        dX == -1 && dY == 1 -> 135f
+                        dX == -1 && dY == 0 -> 180f
+                        dX == -1 && dY == -1 -> 225f
+                        dX == 0 && dY == -1 -> 270f
+                        dX == 1 && dY == -1 -> 315f
+                        else -> null
+                    }
+                    rotation?.let {
+                        world.enqueueAction(
+                            gameState.playerId, Action.RotateEntity(
                                 id = gameState.playerId,
                                 x = playerX,
                                 y = playerY,
                                 rotation = it
-                            ))
-                        }
+                            )
+                        )
                     }
                 }
             }
