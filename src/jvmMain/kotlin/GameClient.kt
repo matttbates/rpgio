@@ -10,12 +10,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -27,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import entities.Entity
 import kotlinx.coroutines.flow.Flow
 import entities.EntityPlayer
-import kotlinx.coroutines.flow.map
 import tiles.*
 import kotlin.math.atan
 
@@ -245,29 +242,16 @@ class GameClient(
                 row.forEachIndexed { c, tile ->
                     val cellX = c * cellSize
 
-                    if(tile is TileWall || tile is TileGrass || tile is TileWater){
-                        Image(
-                            painter = with("tile_${tile.sprite}.png"){ painterMap[this]?:painterResource(this).also { painterMap[this] = it } },
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(cellSize.dp)
-                                .offset(
-                                    x = cellX.dp,
-                                    y = rowY.dp
-                                )
-                        )
-                    }else{
-                        Text(
-                            text = tile.appearance.toString(),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .size(cellSize.dp)
-                                .offset(
-                                    x = cellX.dp,
-                                    y = rowY.dp
-                                )
-                        )
-                    }
+                    Image(
+                        painter = with("tile_${tile.sprite}.png"){ painterMap[this]?:painterResource(this).also { painterMap[this] = it } },
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(cellSize.dp)
+                            .offset(
+                                x = cellX.dp,
+                                y = rowY.dp
+                            )
+                    )
                 }
             }
 

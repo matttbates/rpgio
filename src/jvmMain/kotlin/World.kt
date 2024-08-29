@@ -156,12 +156,12 @@ class World {
                         0xFF00FF00.toInt() -> TileGrass()
                         0xFF0000FF.toInt() -> TileWater()
                         0xFF00FFFF.toInt() -> TilePath()
-                        0xFFFF0000.toInt() -> TileBed()
+                        0xFFFF0000.toInt() -> TileSpawner()
                         0xFF000000.toInt() -> TileWall()
                         else -> null
                     }?.let { tile ->
                         setTile(x, y, tile)
-                        if (tile is TileBed) {
+                        if (tile is TileSpawner) {
                             spawnLocations.add(Pair(x, y))
                         }
                     }
