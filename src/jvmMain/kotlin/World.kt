@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import tiles.*
+import kotlin.math.max
 
 class World {
     //key is the furthest distance from the origin within the chunk
@@ -27,6 +28,30 @@ class World {
 
     private val clientStates = arrayListOf<MutableStateFlow<GameState>>()
     private val pendingActions = hashMapOf<Int, ArrayList<Action>>()
+
+    init {
+        mapRaw?.let { imageBitmap ->
+            val buffer = IntArray(imageBitmap.width * imageBitmap.height)
+            imageBitmap.readPixels(buffer)
+            for (y in 0 until imageBitmap.height) {
+                for (x in 0 until imageBitmap.width) {
+                    when (buffer[y * imageBitmap.width + x]) {
+                        0xFF00FF00.toInt() -> TileGrass()
+                        0xFF0000FF.toInt() -> TileWater()
+                        0xFF00FFFF.toInt() -> TilePath()
+                        0xFFFF0000.toInt() -> TileSpawner()
+                        0xFF000000.toInt() -> TileWall()
+                        else -> null
+                    }?.let { tile ->
+                        setTile(x, y, tile)
+                        if (tile is TileSpawner) {
+                            spawnLocations.add(Pair(x, y))
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     fun start(
         rX: Int = 12,
@@ -146,30 +171,6 @@ class World {
         return entityMaps[Pair(chunkX, chunkY)]?.filter { x == it.coords.first.toInt() && y == it.coords.second.toInt() }?: emptyList()
     }
 
-    init {
-        mapRaw?.let { imageBitmap ->
-            val buffer = IntArray(imageBitmap.width * imageBitmap.height)
-            imageBitmap.readPixels(buffer)
-            for (y in 0 until imageBitmap.height) {
-                for (x in 0 until imageBitmap.width) {
-                    when (buffer[y * imageBitmap.width + x]) {
-                        0xFF00FF00.toInt() -> TileGrass()
-                        0xFF0000FF.toInt() -> TileWater()
-                        0xFF00FFFF.toInt() -> TilePath()
-                        0xFFFF0000.toInt() -> TileSpawner()
-                        0xFF000000.toInt() -> TileWall()
-                        else -> null
-                    }?.let { tile ->
-                        setTile(x, y, tile)
-                        if (tile is TileSpawner) {
-                            spawnLocations.add(Pair(x, y))
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     fun getPlayer(id: Int): EntityPlayer? {
         return entityMaps.values.flatten().find { it is EntityPlayer && it.id == id } as EntityPlayer?
     }
@@ -199,14 +200,34 @@ class World {
     }
 
     private fun moveEntity(entity: Entity, to: Pair<Float, Float>): Boolean {
-        val destTile = getTile((to.first + 0.5f).toInt(), (to.second + 0.5f).toInt())
-        if (destTile?.isSolid != false) {
+        val (toX, toY) = to
+        val nwTile = getTile((toX + entity.hitBox.fromLeft).toInt(), (toY + entity.hitBox.fromTop).toInt())
+        val neTile = getTile((toX + 1 - entity.hitBox.fromRight).toInt(), (toY + entity.hitBox.fromTop).toInt())
+        val swTile = getTile((toX + entity.hitBox.fromLeft).toInt(), (toY + 1 - entity.hitBox.fromBottom).toInt())
+        val seTile = getTile((toX + 1 - entity.hitBox.fromRight).toInt(), (toY + 1 - entity.hitBox.fromBottom).toInt())
+        if(listOf(nwTile, neTile, swTile, seTile).any { tile -> tile?.isSolid != false }){
             return false
         }
-        val entityAtDestination = getEntities(to.first.toInt(), to.second.toInt()).find { it.id != entity.id }
+
+        val entitiesInRange = getEntities(from = Pair(toX.toInt() - 1, toY.toInt() - 1), to = Pair(toX.toInt() + 2, toY.toInt() + 2))//entities in 3x3 centered on entity
+        val (minX, maxX) = entity.getDomain()
+        val (newMinX, newMaxX) = entity.getDomainAt(to)
+        val (minY, maxY) = entity.getRange()
+        val (newMinY, newMaxY) = entity.getRangeAt(to)
+        val motionDomain = with(listOf(minX, maxX, newMinX, newMaxX)){min() to max()}
+        val motionRange = with(listOf(minY, maxY, newMinY, newMaxY)){min() to max()}
+        if(entitiesInRange.any { e ->
+            e.intersectsWith(
+                domain = motionDomain,
+                range = motionRange
+            )
+        }){
+            return false
+        }
+        /*val entityAtDestination = getEntities(toX.toInt(), toY.toInt()).find { it.id != entity.id }
         if (entityAtDestination != null) {
             return false
-        }
+        }*/
         entity.coords = to
         entity.animI = (entity.animI + 1) % 8
         return true

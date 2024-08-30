@@ -1,7 +1,6 @@
 package entities
 
-import World.Companion.TPS
-import tiles.Tile
+import HitBox
 
 class EntityPlayer(
     override val id: Int,
@@ -21,4 +20,10 @@ class EntityPlayer(
     }
 
     override var animI: Int = 7
+    override val hitBox = HitBox(
+        fromLeft = 0.2f,
+        fromTop = 0.7f,
+        fromRight = 0.2f,
+        fromBottom = 0.1f
+    )
 }
