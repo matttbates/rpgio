@@ -1,21 +1,21 @@
 package entities
 
+import Facing
 import HitBox
 
 class EntityPlayer(
     override val id: Int,
     val speed: Float = 0.2f,
     override var coords: Pair<Float, Float>,
-    override var rotation: Float = 0f,
+    override var facing: Facing = Facing.DOWN,
+    var state: State = State.IDLE
 ) : Entity {
-    override val appearance: Char = '>'
     override fun getSprite(): String {
-        return when (rotation) {
-            in 0f .. 89f -> "walk_right_7.png"
-            90f -> "walk_down_7.png"
-            in 91f .. 269f -> "walk_left_7.png"
-            270f -> "walk_up_7.png"
-            else -> "walk_right_7.png"
+        return when (facing) {
+            Facing.RIGHT -> "walk_right_$animI.png"
+            Facing.DOWN -> "walk_down_$animI.png"
+            Facing.LEFT -> "walk_left_$animI.png"
+            Facing.UP -> "walk_up_$animI.png"
         }
     }
 
@@ -26,4 +26,8 @@ class EntityPlayer(
         fromRight = 0.2f,
         fromBottom = 0.1f
     )
+    sealed class State{
+        object IDLE: State()
+        data class INTERACTING(val target: Entity): State()
+    }
 }

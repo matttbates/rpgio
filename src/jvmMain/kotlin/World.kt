@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import tiles.*
-import kotlin.math.max
 
 class World {
     //key is the furthest distance from the origin within the chunk
@@ -90,6 +89,7 @@ class World {
         when(action){
             is Action.MovePlayer -> movePlayer(playerId, action)
             is Action.RotateEntity -> rotateEntity(action)
+            Action.Interact -> interactBy(playerId)
         }
     }
 
@@ -187,6 +187,18 @@ class World {
 
     private fun movePlayer(id: Int, action: Action.MovePlayer) {
         val player = popPlayer(id) ?: return
+        player.state.let { state ->
+            if (state is EntityPlayer.State.INTERACTING) {
+                if (state.target is EntityPlayer) {
+                    state.target.state.let { targetState ->
+                        if (targetState is EntityPlayer.State.INTERACTING && targetState.target == player) {
+                            player.state = EntityPlayer.State.IDLE
+                            state.target.state = EntityPlayer.State.IDLE
+                        }
+                    }
+                }
+            }
+        }
         val (x, y) = player.coords
         val newX = x + (action.dx * player.speed)
         val newY = y + (action.dy * player.speed)
@@ -196,7 +208,7 @@ class World {
 
     private fun rotateEntity(action: Action.RotateEntity){
         val chunk = getChunkCoords(action.x.toInt(), action.y.toInt())
-        entityMaps[chunk]?.find { it.id == action.id }?.rotation = action.rotation
+        entityMaps[chunk]?.find { it.id == action.id }?.facing = action.facing
     }
 
     private fun moveEntity(entity: Entity, to: Pair<Float, Float>): Boolean {
@@ -224,13 +236,72 @@ class World {
         }){
             return false
         }
-        /*val entityAtDestination = getEntities(toX.toInt(), toY.toInt()).find { it.id != entity.id }
-        if (entityAtDestination != null) {
-            return false
-        }*/
+        
         entity.coords = to
         entity.animI = (entity.animI + 1) % 8
         return true
+    }
+
+    private fun getFacingTile(player: EntityPlayer): Tile? {
+        val (centerX, centerY) = player.getCenter()
+        val tileDistance = 1f
+        val tileTargetX = centerX + when(player.facing){
+            Facing.LEFT -> -tileDistance
+            Facing.RIGHT -> tileDistance
+            else -> 0f
+        }
+        val tileTargetY = centerY + when(player.facing){
+            Facing.UP -> -tileDistance
+            Facing.DOWN -> tileDistance
+            else -> 0f
+        }
+        return getTile(tileTargetX.toInt(), tileTargetY.toInt())
+    }
+
+    private fun getFacingEntity(player: EntityPlayer): Entity? {
+        val facing = player.facing
+        val (x, y) = player.getCenter()
+        val maxDistance = 1f
+        val targetX = x + when(facing){
+            Facing.LEFT -> -maxDistance
+            Facing.RIGHT -> maxDistance
+            else -> 0f
+        }
+        val targetY = y + when(facing){
+            Facing.UP -> -maxDistance
+            Facing.DOWN -> maxDistance
+            else -> 0f
+        }
+        return getEntities(targetX.toInt(), targetY.toInt(), 2).filter {
+            it.id != player.id && when (facing) {
+                Facing.LEFT -> it.getRange().let { (min, max) -> y in min..max } && it.getCenter().first < x
+                Facing.RIGHT -> it.getRange().let { (min, max) -> y in min..max } && it.getCenter().first > x
+                Facing.UP -> it.getDomain().let { (min, max) -> x in min..max } && it.getCenter().second < y
+                Facing.DOWN -> it.getDomain().let { (min, max) -> x in min..max } && it.getCenter().second > y
+            }
+        }.minByOrNull {
+            when (facing) {
+                Facing.RIGHT -> it.getDomain().let { (min, _) -> min - x }
+                Facing.LEFT -> it.getDomain().let { (_, max) -> x - max }
+                Facing.DOWN -> it.getRange().let { (min, _) -> min - y }
+                Facing.UP -> it.getRange().let { (_, max) -> y - max }
+            }
+        }
+    }
+
+    private fun interactBy(playerId: Int){
+        val player = getPlayer(playerId) ?: return
+        val entity = getFacingEntity(player)
+        if(entity != null){
+            println("Interacting with $entity")
+            player.state = EntityPlayer.State.INTERACTING(entity)
+            if (entity is EntityPlayer) {
+                entity.state = EntityPlayer.State.INTERACTING(player)
+            }
+            return
+        }
+        val tile = getFacingTile(player)
+        println("Interacting with $tile")
     }
 
     private fun getTopTiles(from: Pair<Int, Int>, to: Pair<Int, Int>): ArrayList<ArrayList<Tile>> {
@@ -244,6 +315,16 @@ class World {
                 row.add(tile)
             }
             result.add(row)
+        }
+        return result
+    }
+
+    private fun getEntities(x: Int, y: Int, r: Int): List<Entity> {
+        val result = arrayListOf<Entity>()
+        for (i in -r..r) {
+            for (j in -r..r) {
+                result.addAll(getEntities(x + i, y + j))
+            }
         }
         return result
     }

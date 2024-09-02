@@ -1,12 +1,12 @@
 package entities
 
+import Facing
 import HitBox
 
 interface Entity {
     val id: Int
     var coords: Pair<Float, Float>
-    var rotation: Float
-    val appearance: Char
+    var facing: Facing
     fun getSprite(): String
     var animI: Int
     val hitBox: HitBox
@@ -47,6 +47,9 @@ interface Entity {
     }
     fun getRangeAt(newCoords: Pair<Float, Float>): Pair<Float, Float>{
         return newCoords.second + hitBox.fromTop to newCoords.second + 1 - hitBox.fromBottom
+    }
+    fun getCenter(): Pair<Float, Float>{
+        return coords.first + hitBox.fromLeft + (((1 - hitBox.fromRight) - hitBox.fromLeft) / 2) to coords.second + hitBox.fromTop + (((1 - hitBox.fromBottom) - hitBox.fromTop) / 2)
     }
     fun getTopLeft(): Pair<Float, Float>{
         return coords.first + hitBox.fromLeft to coords.second + hitBox.fromTop

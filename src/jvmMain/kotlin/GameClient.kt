@@ -1,6 +1,4 @@
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
@@ -13,21 +11,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.*
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.onPointerEvent
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import entities.Entity
 import kotlinx.coroutines.flow.Flow
 import entities.EntityPlayer
 import tiles.*
-import kotlin.math.atan
 
 class GameClient(
     private val world: World
@@ -38,6 +29,11 @@ class GameClient(
     companion object {
         const val cellSize = 20
         private val painterMap = mutableMapOf<String, Painter>()
+
+        @Composable
+        fun getPainter(name: String): Painter {
+            return painterMap[name]?:painterResource(name).also { painterMap[name] = it }
+        }
     }
 
     @Composable
@@ -98,6 +94,7 @@ class GameClient(
                             keysDown.value.add(it.key)
                             when(it.key){
                                 Key.E -> showMenu = !showMenu
+                                Key.Enter -> world.enqueueAction(playerId = gameState.playerId, action = Action.Interact)
                             }
                         }
                         KeyEventType.KeyUp -> keysDown.value.remove(it.key)
@@ -176,24 +173,24 @@ class GameClient(
                     if (dY != 0) {
                         world.enqueueAction(gameState.playerId, Action.MovePlayer(0, dY))
                     }
-                    val rotation = when {
-                        dX == 1 && dY == 0 -> 0f
-                        dX == 1 && dY == 1 -> 45f
-                        dX == 0 && dY == 1 -> 90f
-                        dX == -1 && dY == 1 -> 135f
-                        dX == -1 && dY == 0 -> 180f
-                        dX == -1 && dY == -1 -> 225f
-                        dX == 0 && dY == -1 -> 270f
-                        dX == 1 && dY == -1 -> 315f
+                    val facing = when {
+                        dX == 1 && dY == 0 -> Facing.RIGHT
+                        dX == 1 && dY == 1 -> Facing.RIGHT
+                        dX == 0 && dY == 1 -> Facing.DOWN
+                        dX == -1 && dY == 1 -> Facing.LEFT
+                        dX == -1 && dY == 0 -> Facing.LEFT
+                        dX == -1 && dY == -1 -> Facing.LEFT
+                        dX == 0 && dY == -1 -> Facing.UP
+                        dX == 1 && dY == -1 -> Facing.RIGHT
                         else -> null
                     }
-                    rotation?.let {
+                    facing?.let {
                         world.enqueueAction(
                             gameState.playerId, Action.RotateEntity(
                                 id = gameState.playerId,
                                 x = playerX,
                                 y = playerY,
-                                rotation = it
+                                facing = it
                             )
                         )
                     }
@@ -248,7 +245,7 @@ class GameClient(
                     val cellX = c * cellSize
 
                     Image(
-                        painter = with("tile_${tile.sprite}.png"){ painterMap[this]?:painterResource(this).also { painterMap[this] = it } },
+                        painter = getPainter("tile_${tile.sprite}.png"),
                         contentDescription = null,
                         modifier = Modifier
                             .size(cellSize.dp)
@@ -263,26 +260,11 @@ class GameClient(
         }
     }
 
-    private fun calculateAngle(player: Pair<Float, Float>, pointer: Pair<Float, Float>): Float {
-        val (playerX, playerY) = player
-        val (pointerX, pointerY) = pointer
-        val o = pointerY - playerY
-        val a = pointerX - playerX
-        val angle = atan(o / a)
-        return Math.toDegrees(angle.toDouble()).toFloat() + (if (a < 0) 180 else 0)
-    }
-
     @Composable
     fun Entity(entity: Entity, x: Float, y: Float){
-        val direction = when(entity.rotation){
-            in 0f .. 89f -> "right"
-            90f -> "down"
-            in 91f .. 269f -> "left"
-            270f -> "up"
-            else -> "right"
-        }
+        val sprite = entity.getSprite()
         Image(
-            painter = painterResource("walk_${direction}_${entity.animI}.png"),
+            painter = getPainter("$sprite"),
             contentDescription = null,
             modifier = Modifier
                 .size(width = cellSize.dp, height = cellSize.dp)
@@ -291,6 +273,18 @@ class GameClient(
                     y = y.dp
                 )
         )
+        if (entity is EntityPlayer && entity.state is EntityPlayer.State.INTERACTING) {
+            Image(
+                painter = getPainter("interact.png"),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(width = cellSize.dp, height = cellSize.dp)
+                    .offset(
+                        x = x.dp,
+                        y = y.dp - cellSize.dp
+                    )
+            )
+        }
     }
 
 }
