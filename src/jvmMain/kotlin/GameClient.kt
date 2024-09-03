@@ -110,7 +110,7 @@ class GameClient(
                 val playerOffsetX = (width - 1) / 2
                 val playerOffsetY = (height - 1) / 2
 
-                val (playerX, playerY) = player.coords
+                val (playerX, playerY) = player.location.coords
                 val displayXOffset = playerX % 1
                 val displayYOffset = playerY % 1
                 Box(
@@ -134,9 +134,9 @@ class GameClient(
                         Tiles(tiles = gameState.tiles)
                     }
                     gameState.entities.sortedBy {
-                        it.coords.second
+                        it.location.coords.second
                     }.forEach {
-                        val (x, y) = it.coords
+                        val (x, y) = it.location.coords
                         //player coords are in the center of the screen
                         //so we need to adjust the entity coords to be relative to the player
                         val adjustedX = playerOffsetX - (playerX - x)
@@ -188,8 +188,10 @@ class GameClient(
                         world.enqueueAction(
                             gameState.playerId, Action.RotateEntity(
                                 id = gameState.playerId,
-                                x = playerX,
-                                y = playerY,
+                                location = Location(
+                                    coords = playerX to playerY,
+                                    map = gameState.map
+                                ),
                                 facing = it
                             )
                         )
@@ -264,7 +266,7 @@ class GameClient(
     fun Entity(entity: Entity, x: Float, y: Float){
         val sprite = entity.getSprite()
         Image(
-            painter = getPainter("$sprite"),
+            painter = getPainter("$sprite ".trim()),
             contentDescription = null,
             modifier = Modifier
                 .size(width = cellSize.dp, height = cellSize.dp)

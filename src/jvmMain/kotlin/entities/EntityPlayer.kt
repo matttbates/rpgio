@@ -2,11 +2,12 @@ package entities
 
 import Facing
 import HitBox
+import Location
 
 class EntityPlayer(
     override val id: Int,
     val speed: Float = 0.2f,
-    override var coords: Pair<Float, Float>,
+    override var location: Location,
     override var facing: Facing = Facing.DOWN,
     var state: State = State.IDLE
 ) : Entity {

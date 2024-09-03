@@ -6,18 +6,15 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import tiles.*
+import java.nio.file.Files
+import java.nio.file.Paths
 
 class World {
-    //key is the furthest distance from the origin within the chunk
-    private val tilesMaps = hashMapOf<Pair<Int, Int>, HashMap<Pair<Int, Int>, Tile>>()
-    private val entityMaps = hashMapOf<Pair<Int, Int>, ArrayList<Entity>>()
-
-    private val spawnLocations = arrayListOf<Pair<Int, Int>>()
 
     companion object {
+        private val maps: MutableMap<String, MapData> = hashMapOf()//"src/jvmMain/resources/maps/map.png" to MapData("src/jvmMain/resources/maps/map.png"))
         private const val CHUNK_SIZE = 20
         const val TPS = 20
-        private val mapRaw = createBitmapFromFile("src/jvmMain/resources/map.png")
 
         private val defaultTile = TileWater()
     }
@@ -28,23 +25,49 @@ class World {
     private val clientStates = arrayListOf<MutableStateFlow<GameState>>()
     private val pendingActions = hashMapOf<Int, ArrayList<Action>>()
 
+    private fun getAllMaps(): List<String>{
+        val projectDirAbsolutePath = Paths.get("").toAbsolutePath().toString()
+        val resourcesPath = Paths.get(projectDirAbsolutePath, "/src/jvmMain/resources/maps")
+        val list = arrayListOf<String>()
+        Files.walk(resourcesPath)
+            .filter { item -> Files.isRegularFile(item) }
+            .filter { item -> item.toString().endsWith(".png") }
+            .forEach { item ->
+                list.add("src/jvmMain/resources/maps/${item.toFile().name}")
+            }
+        return list
+    }
+
     init {
-        mapRaw?.let { imageBitmap ->
-            val buffer = IntArray(imageBitmap.width * imageBitmap.height)
-            imageBitmap.readPixels(buffer)
-            for (y in 0 until imageBitmap.height) {
-                for (x in 0 until imageBitmap.width) {
-                    when (buffer[y * imageBitmap.width + x]) {
-                        0xFF00FF00.toInt() -> TileGrass()
-                        0xFF0000FF.toInt() -> TileWater()
-                        0xFF00FFFF.toInt() -> TilePath()
-                        0xFFFF0000.toInt() -> TileSpawner()
-                        0xFF000000.toInt() -> TileWall()
-                        else -> null
-                    }?.let { tile ->
-                        setTile(x, y, tile)
-                        if (tile is TileSpawner) {
-                            spawnLocations.add(Pair(x, y))
+        getAllMaps().forEach { map ->
+            maps[map] = MapData(map)
+        }
+        maps.values.forEach { mapData ->
+            mapData.rawMap?.let { imageBitmap ->
+                val buffer = IntArray(imageBitmap.width * imageBitmap.height)
+                imageBitmap.readPixels(buffer)
+                for (y in 0 until imageBitmap.height) {
+                    for (x in 0 until imageBitmap.width) {
+                        when (buffer[y * imageBitmap.width + x]) {
+                            0xFF00FF00.toInt() -> TileGrass()
+                            0xFF0000FF.toInt() -> TileWater()
+                            0xFF00FFFF.toInt() -> TilePath()
+                            0xFFFF0000.toInt() -> TileSpawner()
+                            0xFF000000.toInt() -> TileWall()
+                            else -> null
+                        }?.let { tile ->
+                            setTile(Location(
+                                coords = x.toFloat() to y.toFloat(),
+                                map = mapData.map
+                            ), tile)
+                            if (tile is TileSpawner) {
+                                mapData.spawnLocations.add(
+                                    Location(
+                                        coords = Pair(x.toFloat(), y.toFloat()),
+                                        map = mapData.map
+                                    )
+                                )
+                            }
                         }
                     }
                 }
@@ -72,12 +95,18 @@ class World {
                     }
                     //update state
                     val player = getPlayer(playerId) ?: return@forEach
-                    val (x, y) = player.coords.let { (x, y) -> Pair(x.toInt(), y.toInt()) }
+                    val (x, y) = player.location.coords.let { (x, y) -> Pair(x.toInt(), y.toInt()) }
                     val from = Pair(x - rX, y - rY)
                     val to = Pair(x + rX, y + rY)
-                    val tiles = getTopTiles(from, to)
-                    val entities = getEntities(from, to)
-                    it.value = GameState(playerId, tiles, entities, tick)
+                    val tiles = getTopTiles(from, to, player.location.map)
+                    val entities = getEntities(from, to, player.location.map)
+                    it.value = GameState(
+                        playerId = playerId,
+                        tiles = tiles,
+                        entities = entities,
+                        tick = tick,
+                        map = player.location.map
+                    )
                 }
                 tick++
                 Thread.sleep(sleepMillis.toLong())
@@ -123,16 +152,17 @@ class World {
     }
 
     private fun spawnNewPlayer(id: Int): EntityPlayer? {
-        val emptySpawns = spawnLocations.filter { (x, y) ->
-            getEntities(x, y).isEmpty()
+        val emptySpawns = maps.values.flatMap { mapData ->
+            mapData.spawnLocations.filter { location ->
+                getEntities(location).isEmpty()
+            }
         }
         if (emptySpawns.isEmpty()) {
             return null
         }
-        val coords = emptySpawns.random()
         val entityPlayer = EntityPlayer(
             id = id,
-            coords = Pair(coords.first.toFloat(), coords.second.toFloat())
+            location = emptySpawns.random()
         )
         setEntity(entityPlayer)
         return entityPlayer
@@ -140,47 +170,56 @@ class World {
 
     private fun checkSign(num: Int) = (num shr 31 or 1)
 
-    private fun getChunkCoords(x: Int, y: Int): Pair<Int, Int>{
-        val qX = checkSign(x)
-        val qY = checkSign(y)
-        return Pair((x / CHUNK_SIZE) + qX, (y / CHUNK_SIZE) + qY)
+    private fun getChunkCoords(x: Float, y: Float): Pair<Int, Int>{
+        val qX = checkSign(x.toInt())
+        val qY = checkSign(y.toInt())
+        return Pair((x.toInt() / CHUNK_SIZE) + qX, (y.toInt() / CHUNK_SIZE) + qY)
     }
 
-    private fun setTile(x: Int, y: Int, tile: Tile){
+    private fun setTile(location: Location, tile: Tile){
+        val (x, y) = location.coords
         val (chunkX, chunkY) = getChunkCoords(x, y)
-        tilesMaps[Pair(chunkX, chunkY)] = (tilesMaps[Pair(chunkX, chunkY)] ?: hashMapOf()).apply {
-            this[Pair(x, y)] = tile
+        maps[location.map]?.apply {
+            tilesMaps[Pair(chunkX, chunkY)] = (tilesMaps[Pair(chunkX, chunkY)] ?: hashMapOf()).apply {
+                this[Pair(x.toInt(), y.toInt())] = tile
+            }
         }
     }
 
     private fun setEntity(entity: Entity){
-        val (x, y) = entity.coords
-        val (chunkX, chunkY) = getChunkCoords(x.toInt(), y.toInt())
-        entityMaps[Pair(chunkX, chunkY)] = (entityMaps[Pair(chunkX, chunkY)] ?: arrayListOf()).apply {
-            this.add(entity)
+        val (x, y) = entity.location.coords
+        val (chunkX, chunkY) = getChunkCoords(x, y)
+        maps[entity.location.map]?.apply {
+            entityMaps[Pair(chunkX, chunkY)] = (entityMaps[Pair(chunkX, chunkY)] ?: arrayListOf()).apply {
+                this.add(entity)
+            }
         }
     }
 
-    private fun getTile(x: Int, y: Int): Tile?{
+    private fun getTile(location: Location): Tile?{
+        val (x, y) = location.coords
         val (chunkX, chunkY) = getChunkCoords(x, y)
-        return tilesMaps[Pair(chunkX, chunkY)]?.get(Pair(x, y))
+        return maps[location.map]?.tilesMaps?.get(Pair(chunkX, chunkY))?.get(x.toInt() to y.toInt())
     }
 
-    private fun getEntities(x: Int, y: Int): List<Entity>{
+    private fun getEntities(location: Location): List<Entity>{
+        val (x, y) = location.coords
         val (chunkX, chunkY) = getChunkCoords(x, y)
-        return entityMaps[Pair(chunkX, chunkY)]?.filter { x == it.coords.first.toInt() && y == it.coords.second.toInt() }?: emptyList()
+        return maps[location.map]?.entityMaps?.get(Pair(chunkX, chunkY))?.filter { x.toInt() == it.location.coords.first.toInt() && y.toInt() == it.location.coords.second.toInt() }?: emptyList()
     }
 
     fun getPlayer(id: Int): EntityPlayer? {
-        return entityMaps.values.flatten().find { it is EntityPlayer && it.id == id } as EntityPlayer?
+        return maps.values.flatMap { it.entityMaps.values }.flatten().find { it is EntityPlayer && it.id == id } as EntityPlayer?
     }
 
     private fun popPlayer(id: Int): EntityPlayer? {
         val player = getPlayer(id)
         if (player != null) {
-            val (x, y) = player.coords
-            val (chunkX, chunkY) = getChunkCoords(x.toInt(), y.toInt())
-            entityMaps[Pair(chunkX, chunkY)]?.remove(player)
+            val (x, y) = player.location.coords
+            val (chunkX, chunkY) = getChunkCoords(x, y)
+            maps.values.find { it.entityMaps[chunkX to chunkY]?.contains(player) == true }?.entityMaps?.let { entityMaps ->
+                entityMaps[Pair(chunkX, chunkY)]?.remove(player)
+            }
         }
         return player
     }
@@ -199,33 +238,38 @@ class World {
                 }
             }
         }
-        val (x, y) = player.coords
+        val (x, y) = player.location.coords
         val newX = x + (action.dx * player.speed)
         val newY = y + (action.dy * player.speed)
-        moveEntity(player, Pair(newX, newY))
+        moveEntity(player, player.location.copy(coords = newX to newY))
         setEntity(player)
     }
 
     private fun rotateEntity(action: Action.RotateEntity){
-        val chunk = getChunkCoords(action.x.toInt(), action.y.toInt())
-        entityMaps[chunk]?.find { it.id == action.id }?.facing = action.facing
+        val (x, y) = action.location.coords
+        val chunk = getChunkCoords(x, y)
+        maps[action.location.map]?.entityMaps?.get(chunk)?.find { it.id == action.id }?.facing = action.facing
     }
 
-    private fun moveEntity(entity: Entity, to: Pair<Float, Float>): Boolean {
-        val (toX, toY) = to
-        val nwTile = getTile((toX + entity.hitBox.fromLeft).toInt(), (toY + entity.hitBox.fromTop).toInt())
-        val neTile = getTile((toX + 1 - entity.hitBox.fromRight).toInt(), (toY + entity.hitBox.fromTop).toInt())
-        val swTile = getTile((toX + entity.hitBox.fromLeft).toInt(), (toY + 1 - entity.hitBox.fromBottom).toInt())
-        val seTile = getTile((toX + 1 - entity.hitBox.fromRight).toInt(), (toY + 1 - entity.hitBox.fromBottom).toInt())
+    private fun moveEntity(entity: Entity, to: Location): Boolean {
+        val (toX, toY) = to.coords
+        val nwTile = getTile(to.copy(coords = toX + entity.hitBox.fromLeft to toY + entity.hitBox.fromTop))
+        val neTile = getTile(to.copy(coords = toX + 1 - entity.hitBox.fromRight to toY + entity.hitBox.fromTop))
+        val swTile = getTile(to.copy(coords = toX + entity.hitBox.fromLeft to toY + 1 - entity.hitBox.fromBottom))
+        val seTile = getTile(to.copy(coords = toX + 1 - entity.hitBox.fromRight to toY + 1 - entity.hitBox.fromBottom))
         if(listOf(nwTile, neTile, swTile, seTile).any { tile -> tile?.isSolid != false }){
             return false
         }
 
-        val entitiesInRange = getEntities(from = Pair(toX.toInt() - 1, toY.toInt() - 1), to = Pair(toX.toInt() + 2, toY.toInt() + 2))//entities in 3x3 centered on entity
+        val entitiesInRange = getEntities(
+            from = Pair(toX.toInt() - 1, toY.toInt() - 1),
+            to = Pair(toX.toInt() + 2, toY.toInt() + 2),
+            map = entity.location.map
+        )//entities in 3x3 centered on entity
         val (minX, maxX) = entity.getDomain()
-        val (newMinX, newMaxX) = entity.getDomainAt(to)
+        val (newMinX, newMaxX) = entity.getDomainAt(to.coords)
         val (minY, maxY) = entity.getRange()
-        val (newMinY, newMaxY) = entity.getRangeAt(to)
+        val (newMinY, newMaxY) = entity.getRangeAt(to.coords)
         val motionDomain = with(listOf(minX, maxX, newMinX, newMaxX)){min() to max()}
         val motionRange = with(listOf(minY, maxY, newMinY, newMaxY)){min() to max()}
         if(entitiesInRange.any { e ->
@@ -237,7 +281,7 @@ class World {
             return false
         }
         
-        entity.coords = to
+        entity.location = entity.location.copy(coords = to.coords)
         entity.animI = (entity.animI + 1) % 8
         return true
     }
@@ -255,7 +299,7 @@ class World {
             Facing.DOWN -> tileDistance
             else -> 0f
         }
-        return getTile(tileTargetX.toInt(), tileTargetY.toInt())
+        return getTile(player.location.copy(coords = tileTargetX to tileTargetY))
     }
 
     private fun getFacingEntity(player: EntityPlayer): Entity? {
@@ -272,7 +316,7 @@ class World {
             Facing.DOWN -> maxDistance
             else -> 0f
         }
-        return getEntities(targetX.toInt(), targetY.toInt(), 2).filter {
+        return getEntities(player.location.copy(coords = targetX to targetY), 2).filter {
             it.id != player.id && when (facing) {
                 Facing.LEFT -> it.getRange().let { (min, max) -> y in min..max } && it.getCenter().first < x
                 Facing.RIGHT -> it.getRange().let { (min, max) -> y in min..max } && it.getCenter().first > x
@@ -304,14 +348,14 @@ class World {
         println("Interacting with $tile")
     }
 
-    private fun getTopTiles(from: Pair<Int, Int>, to: Pair<Int, Int>): ArrayList<ArrayList<Tile>> {
+    private fun getTopTiles(from: Pair<Int, Int>, to: Pair<Int, Int>, map: String): ArrayList<ArrayList<Tile>> {
         val (fromX, fromY) = from
         val (toX, toY) = to
         val result = ArrayList<ArrayList<Tile>>()
         for (y in fromY..toY) {
             val row = ArrayList<Tile>()
             for (x in fromX..toX) {
-                val tile = getTile(x, y) ?: defaultTile
+                val tile = getTile(Location(coords = x.toFloat() to y.toFloat(), map = map)) ?: defaultTile
                 row.add(tile)
             }
             result.add(row)
@@ -319,23 +363,27 @@ class World {
         return result
     }
 
-    private fun getEntities(x: Int, y: Int, r: Int): List<Entity> {
+    private fun getEntities(location: Location, r: Int): List<Entity> {
         val result = arrayListOf<Entity>()
         for (i in -r..r) {
             for (j in -r..r) {
-                result.addAll(getEntities(x + i, y + j))
+                result.addAll(getEntities(
+                    location = location.copy(
+                        coords = location.coords.let { (x, y) -> x + i to y + j }
+                    )
+                ))
             }
         }
         return result
     }
 
-    private fun getEntities(from: Pair<Int, Int>, to: Pair<Int, Int>): List<Entity> {
+    private fun getEntities(from: Pair<Int, Int>, to: Pair<Int, Int>, map: String): List<Entity> {
         val (fromX, fromY) = from
         val (toX, toY) = to
         val result = arrayListOf<Entity>()
         for (y in fromY..toY) {
             for (x in fromX..toX) {
-                result.addAll(getEntities(x, y))
+                result.addAll(getEntities(Location(coords = x.toFloat() to y.toFloat(), map)))
             }
         }
         return result
