@@ -37,7 +37,13 @@ fun main() = application {
     ) {
         App(world = world)
     }
-    /*Window(onCloseRequest = ::exitApplication) {
+    /*Window(
+        onCloseRequest = ::exitApplication,
+        state = WindowState(
+            size = DpSize(screenW + mysteryWidth, screenH + titleHeight),
+        ),
+        resizable = false
+    ) {
         App(world = world)
     }*/
 }

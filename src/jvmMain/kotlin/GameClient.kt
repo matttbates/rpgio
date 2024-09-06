@@ -1,4 +1,5 @@
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
@@ -11,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.res.painterResource
@@ -247,7 +249,7 @@ class GameClient(
                     val cellX = c * cellSize
 
                     Image(
-                        painter = getPainter("tile_${tile.sprite}.png"),
+                        painter = getPainter("tiles/tile_${tile.sprite}.png"),
                         contentDescription = null,
                         modifier = Modifier
                             .size(cellSize.dp)
@@ -275,6 +277,23 @@ class GameClient(
                     y = y.dp
                 )
         )
+        Box(modifier = Modifier
+            .size(width = cellSize.dp, height = cellSize.dp)
+            .offset(
+                x = x.dp,
+                y = y.dp
+            )
+            .border(1.dp, color = Color.Cyan)
+            .padding(
+                start = (entity.hitBox.fromLeft * cellSize).dp,
+                top = (entity.hitBox.fromTop * cellSize).dp,
+                end = (entity.hitBox.fromRight * cellSize).dp,
+                bottom = (entity.hitBox.fromBottom * cellSize).dp
+            )
+            .border(1.dp, color = Color.Red)
+        ){
+
+        }
         if (entity is EntityPlayer && entity.state is EntityPlayer.State.INTERACTING) {
             Image(
                 painter = getPainter("interact.png"),

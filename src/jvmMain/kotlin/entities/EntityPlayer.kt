@@ -13,10 +13,10 @@ class EntityPlayer(
 ) : Entity {
     override fun getSprite(): String {
         return when (facing) {
-            Facing.RIGHT -> "walk_right_$animI.png"
-            Facing.DOWN -> "walk_down_$animI.png"
-            Facing.LEFT -> "walk_left_$animI.png"
-            Facing.UP -> "walk_up_$animI.png"
+            Facing.RIGHT -> "walk/walk_right_$animI.png"
+            Facing.DOWN -> "walk/walk_down_$animI.png"
+            Facing.LEFT -> "walk/walk_left_$animI.png"
+            Facing.UP -> "walk/walk_up_$animI.png"
         }
     }
 
