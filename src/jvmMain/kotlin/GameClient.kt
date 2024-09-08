@@ -1,7 +1,9 @@
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
@@ -10,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -29,6 +32,7 @@ class GameClient(
     private var isLoggedIn by mutableStateOf(false)
 
     companion object {
+        const val DEBUG_VIEW = false
         const val cellSize = 20
         private val painterMap = mutableMapOf<String, Painter>()
 
@@ -148,6 +152,7 @@ class GameClient(
                         Entity(it, cellX, cellY)
                     }
 
+                    //Handle key presses
                     var dX = 0
                     var dY = 0
                     keysDown.value.forEach { key ->
@@ -200,6 +205,22 @@ class GameClient(
                     }
                 }
             }
+
+            //Lighting
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 1 - gameState.lightLevel))
+            )
+
+            //Clock
+            DigitalClock(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(10.dp),
+                tick = gameState.tick
+            )
+
         }
 
         if(showMenu){
@@ -223,7 +244,10 @@ class GameClient(
         gameState: GameState,
         onDisconnect: () -> Unit
     ){
-        Column {
+        Column(
+            modifier = Modifier
+                .background(Color.White.copy(alpha = 0.2f))
+        ) {
             Row {
                 Text("Game logged in as player ${gameState.playerId}")
                 Button(
@@ -231,6 +255,69 @@ class GameClient(
                 ) {
                     Text("Logout")
                 }
+            }
+        }
+    }
+
+    @Composable
+    private fun DigitalClock(
+        modifier: Modifier = Modifier,
+        tick: Int
+    ){
+        val hour = ((tick % World.TICKS_PER_DAY) / World.TICKS_PER_DAY * 24).toInt()
+        val amPm = if(hour < 12) "AM" else "PM"
+        val hour12 = (hour % 12).let { if(it == 0) 12 else it }
+        val minute = (((tick % World.TICKS_PER_DAY) / World.TICKS_PER_DAY * 24 * 60) % 60).toInt()
+        val minuteString = if(minute < 10) "0$minute" else "$minute"
+        Text(modifier = modifier
+            .background(Color.White.copy(alpha = 0.2f)),
+            text = "$hour12:$minuteString $amPm"
+        )
+    }
+
+    @Composable
+    private fun AnalogClock(
+        tick: Int
+    ){
+        val size = 100
+        val hour = ((tick % World.TICKS_PER_DAY) / World.TICKS_PER_DAY * 24).toInt()
+        val minute = ((tick % World.TICKS_PER_DAY) / World.TICKS_PER_DAY * 24 * 60).toInt()
+        Text("Time: $hour")
+        Box(
+            modifier = Modifier
+                .size(size.dp)
+                .border(width = 1.dp, color = Color.Black, shape = CircleShape)
+        ){
+            Box(modifier = Modifier
+                .align(Alignment.Center)
+                .size((size * 0.1).dp)
+                .background(Color.Black, shape = CircleShape),
+            )
+            val hourAngle = (hour % 12f / 12f) * 360
+            Box(modifier = Modifier
+                .align(Alignment.Center)
+                .height((size * 0.5).dp)
+                .width((size * 0.1).dp)
+                .rotate(hourAngle)
+            ){
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.5f)
+                    .background(Color.Black, shape = CircleShape)
+                )
+            }
+            val minuteAngle = (minute % 60f / 60f) * 360
+            Box(modifier = Modifier
+                .align(Alignment.Center)
+                .height((size * 0.7).dp)
+                .width((size * 0.1).dp)
+                .rotate(minuteAngle)
+            ){
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.5f)
+                    .background(Color.Black, shape = CircleShape)
+                )
             }
         }
     }
@@ -277,22 +364,22 @@ class GameClient(
                     y = y.dp
                 )
         )
-        Box(modifier = Modifier
-            .size(width = cellSize.dp, height = cellSize.dp)
-            .offset(
-                x = x.dp,
-                y = y.dp
+        if(DEBUG_VIEW){
+            Box(modifier = Modifier
+                .size(width = cellSize.dp, height = cellSize.dp)
+                .offset(
+                    x = x.dp,
+                    y = y.dp
+                )
+                .border(1.dp, color = Color.Cyan)
+                .padding(
+                    start = (entity.hitBox.fromLeft * cellSize).dp,
+                    top = (entity.hitBox.fromTop * cellSize).dp,
+                    end = (entity.hitBox.fromRight * cellSize).dp,
+                    bottom = (entity.hitBox.fromBottom * cellSize).dp
+                )
+                .border(1.dp, color = Color.Red)
             )
-            .border(1.dp, color = Color.Cyan)
-            .padding(
-                start = (entity.hitBox.fromLeft * cellSize).dp,
-                top = (entity.hitBox.fromTop * cellSize).dp,
-                end = (entity.hitBox.fromRight * cellSize).dp,
-                bottom = (entity.hitBox.fromBottom * cellSize).dp
-            )
-            .border(1.dp, color = Color.Red)
-        ){
-
         }
         if (entity is EntityPlayer && entity.state is EntityPlayer.State.INTERACTING) {
             Image(

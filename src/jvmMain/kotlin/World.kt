@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import tiles.*
 import java.nio.file.Files
 import java.nio.file.Paths
+import kotlin.math.cos
 
 class World {
 
@@ -15,6 +16,9 @@ class World {
         private val maps: MutableMap<String, MapData> = hashMapOf()//"src/jvmMain/resources/maps/map.png" to MapData("src/jvmMain/resources/maps/map.png"))
         private const val CHUNK_SIZE = 20
         const val TPS = 20
+        private const val SECONDS_PER_DAY_NIGHT_CYCLE = 60.0 * 40//40 minutes
+        const val TICKS_PER_DAY = TPS * SECONDS_PER_DAY_NIGHT_CYCLE
+        const val STARTING_HOUR = 9
     }
 
     private var displaySize = Pair(0, 0)
@@ -94,7 +98,7 @@ class World {
     ) {
         displaySize = Pair(rX * 2 + 1, rY * 2 + 1)
         CoroutineScope(Dispatchers.IO).launch {
-            var tick = 0
+            var tick = (TICKS_PER_DAY * (STARTING_HOUR / 24f)).toInt()
             val sleepMillis = 1000 / TPS
             while (true) {
                 clientStates.forEach {
@@ -118,13 +122,27 @@ class World {
                         tiles = tiles,
                         entities = entities,
                         tick = tick,
-                        map = player.location.map
+                        map = player.location.map,
+                        lightLevel = calculateLightLevel(player.location.map, tick)
                     )
                 }
                 tick++
                 Thread.sleep(sleepMillis.toLong())
             }
         }
+    }
+
+    private fun calculateLightLevel(map: String, tick: Int): Float {
+        //todo use map data to calculate light level
+
+        return lightFromTicks(tick)
+    }
+
+    private fun lightFromTicks(tick: Int): Float {
+        val time = tick % TICKS_PER_DAY / TICKS_PER_DAY.toFloat()
+        val verticalStretch = 0.75f
+        val horizontalShift = 1/12f
+        return ((1f - cos((time - horizontalShift) * (2 * Math.PI)).toFloat()) * verticalStretch).coerceIn(0.5f, 1.0f)
     }
 
     private fun performAction(playerId: Int, action: Action){
