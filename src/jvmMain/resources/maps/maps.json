@@ -1,0 +1,14 @@
+{
+  "maps": [
+    {
+      "name": "World",
+      "file": "0.png",
+      "lightMode": "NATURAL"
+    },
+    {
+      "name": "Building",
+      "file": "1.png",
+      "lightMode": "LIGHT"
+    }
+  ]
+}

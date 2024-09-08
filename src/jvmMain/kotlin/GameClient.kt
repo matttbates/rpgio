@@ -149,7 +149,7 @@ class GameClient(
                         val adjustedY = playerOffsetY - (playerY - y)
                         val cellX = adjustedX * cellSize
                         val cellY = adjustedY * cellSize
-                        Entity(it, cellX, cellY)
+                        Entity(it, it.getSprite(), cellX, cellY)
                     }
 
                     //Handle key presses
@@ -352,8 +352,8 @@ class GameClient(
     }
 
     @Composable
-    fun Entity(entity: Entity, x: Float, y: Float){
-        val sprite = entity.getSprite()
+    fun Entity(entity: Entity, sprite: String, x: Float, y: Float){
+        //val sprite = entity.getSprite()
         Image(
             painter = getPainter("$sprite ".trim()),
             contentDescription = null,

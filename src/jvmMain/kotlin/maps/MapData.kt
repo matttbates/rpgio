@@ -1,3 +1,7 @@
+package maps
+
+import Location
+import createBitmapFromFile
 import entities.Entity
 import tiles.Tile
 import tiles.TileWall
@@ -5,6 +9,7 @@ import tiles.TileWater
 
 data class MapData(
     val map: String,
+    val lightMode: LightMode
 ){
     val rawMap = createBitmapFromFile(map)
     val tilesMaps = hashMapOf<Pair<Int, Int>, HashMap<Pair<Int, Int>, Tile>>()

@@ -5,6 +5,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import maps.LightMode
+import maps.MapData
+import maps.MapJson
+import maps.MapsJson
 import tiles.*
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -13,12 +18,12 @@ import kotlin.math.cos
 class World {
 
     companion object {
-        private val maps: MutableMap<String, MapData> = hashMapOf()//"src/jvmMain/resources/maps/map.png" to MapData("src/jvmMain/resources/maps/map.png"))
+        private val maps: MutableMap<String, MapData> = hashMapOf()//"src/jvmMain/resources/maps/map.png" to maps.MapData("src/jvmMain/resources/maps/map.png"))
         private const val CHUNK_SIZE = 20
         const val TPS = 20
         private const val SECONDS_PER_DAY_NIGHT_CYCLE = 60.0 * 40//40 minutes
         const val TICKS_PER_DAY = TPS * SECONDS_PER_DAY_NIGHT_CYCLE
-        const val STARTING_HOUR = 9
+        const val STARTING_HOUR = 4
     }
 
     private var displaySize = Pair(0, 0)
@@ -27,22 +32,21 @@ class World {
     private val clientStates = arrayListOf<MutableStateFlow<GameState>>()
     private val pendingActions = hashMapOf<Int, ArrayList<Action>>()
 
-    private fun getAllMaps(): List<String>{
+    private fun readTextFile(fileName: String): String {
         val projectDirAbsolutePath = Paths.get("").toAbsolutePath().toString()
-        val resourcesPath = Paths.get(projectDirAbsolutePath, "/src/jvmMain/resources/maps")
-        val list = arrayListOf<String>()
-        Files.walk(resourcesPath)
-            .filter { item -> Files.isRegularFile(item) }
-            .filter { item -> item.toString().endsWith(".png") }
-            .forEach { item ->
-                list.add("src/jvmMain/resources/maps/${item.toFile().name}")
-            }
-        return list
+        val resourcesPath = Paths.get(projectDirAbsolutePath, fileName)
+        return Files.readString(resourcesPath)
     }
 
     init {
-        getAllMaps().forEach { map ->
-            maps[map] = MapData(map)
+        val jsonString = readTextFile("src/jvmMain/resources/maps/maps.json")
+        val mapsJson = Json.decodeFromString<MapsJson>(jsonString)
+        mapsJson.maps.forEach { mapJson ->
+            val filePath = "src/jvmMain/resources/maps/${mapJson.file}"
+            maps[filePath] = MapData(
+                map = filePath,
+                lightMode = LightMode.valueOf(mapJson.lightMode)
+            )
         }
         maps.values.forEach { mapData ->
             mapData.rawMap?.let { imageBitmap ->
@@ -133,9 +137,12 @@ class World {
     }
 
     private fun calculateLightLevel(map: String, tick: Int): Float {
-        //todo use map data to calculate light level
-
-        return lightFromTicks(tick)
+        val mapData = maps[map] ?: return 1.0f
+        return when (mapData.lightMode) {
+            LightMode.NATURAL -> lightFromTicks(tick)
+            LightMode.LIGHT -> 1.0f
+            LightMode.DARK -> 0.5f
+        }
     }
 
     private fun lightFromTicks(tick: Int): Float {
