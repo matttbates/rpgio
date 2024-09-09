@@ -45,14 +45,24 @@ class RpgIoTime {
     fun getYear(): Int{
         return (tick / TICKS_PER_DAY / DAYS_PER_MONTH / MONTHS_PER_YEAR).toInt() + 1
     }
+    fun getAmPm(): String{
+        return if(getHourOfDay() < 12) "AM" else "PM"
+    }
     fun getTimeString(): String{
         val hour = getHourOfDay()
         val minute = getMinuteOfDay()
-        val amPm = if(hour < 12) "AM" else "PM"
         val hour12 = (hour % 12).let { if(it == 0) 12 else it }
         val hourString = if(hour12 < 10) " $hour12" else "$hour12"
         val minuteString = if(minute < 10) "0$minute" else "$minute"
-        return "${DAYS[getDayOfWeek() - 1]}\n$hourString:$minuteString $amPm\n${MONTHS[getMonthOfYear() - 1]} ${getDayOfMonth()}, ${getYear()}"
+        return "${DAYS[getDayOfWeek() - 1]}\n$hourString:$minuteString ${getAmPm()}\n${MONTHS[getMonthOfYear() - 1]} ${getDayOfMonth()}, ${getYear()}"
+    }
+    fun getTimeStringShort(): String{
+        val hour = getHourOfDay()
+        val minute = getMinuteOfDay()
+        val hour12 = (hour % 12).let { if(it == 0) 12 else it }
+        val hourString = if(hour12 < 10) " $hour12" else "$hour12"
+        val minuteString = if(minute < 10) "0$minute" else "$minute"
+        return "${getYear()}/${getMonthOfYear()}/${getDayOfMonth()} $hourString:$minuteString ${getAmPm()}"
     }
 
 }

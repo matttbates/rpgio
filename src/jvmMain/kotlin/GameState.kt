@@ -1,3 +1,4 @@
+import chat.Conversation
 import entities.Entity
 import tiles.Tile
 
@@ -8,5 +9,5 @@ data class GameState(
     val tick: Int = 0,
     val map: String = "",
     val lightLevel: Float = 1.0f,
-    val time: String = "00:00",
+    val time: String = "",
 )

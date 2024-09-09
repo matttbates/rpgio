@@ -3,6 +3,7 @@ package entities
 import Facing
 import HitBox
 import Location
+import chat.Conversation
 
 class EntityPlayer(
     override val id: Int,
@@ -29,6 +30,6 @@ class EntityPlayer(
     )
     sealed class State{
         object IDLE: State()
-        data class INTERACTING(val target: Entity): State()
+        data class TALKING(val conversation: Conversation): State()
     }
 }

@@ -1,4 +1,6 @@
 import RpgIoTime.Companion.TPS
+import chat.ChatManager
+import chat.Message
 import entities.Entity
 import entities.EntityDoor
 import entities.EntityPlayer
@@ -31,6 +33,7 @@ class World {
         }
     }
     private val time = RpgIoTime()
+    private val chatManager = ChatManager()
 
     private var displaySize = Pair(0, 0)
     fun getDisplaySize() = displaySize
@@ -115,7 +118,7 @@ class World {
                         tick = time.getTick(),
                         map = player.location.map,
                         lightLevel = calculateLightLevel(player.location.map),
-                        time = time.getTimeString()
+                        time = time.getTimeString(),
                     )
                 }
                 time.advanceTime()
@@ -145,6 +148,8 @@ class World {
             is Action.MovePlayer -> movePlayer(playerId, action)
             is Action.RotateEntity -> rotateEntity(action)
             Action.Interact -> interactBy(playerId)
+            Action.CloseConversation -> closeConversation(playerId)
+            is Action.SendMessage -> sendMessage(playerId, action)
         }
     }
 
@@ -171,10 +176,6 @@ class World {
 
     fun disconnect(playerId: Int) {
         clientStates.removeIf { it.value.playerId == playerId }
-    }
-
-    fun isConnected(playerId: Int): Boolean {
-        return clientStates.any { it.value.playerId == playerId }
     }
 
     private fun spawnNewPlayer(id: Int): EntityPlayer? {
@@ -244,18 +245,6 @@ class World {
 
     private fun movePlayer(id: Int, action: Action.MovePlayer) {
         val player = popPlayer(id) ?: return
-        player.state.let { state ->
-            if (state is EntityPlayer.State.INTERACTING) {
-                if (state.target is EntityPlayer) {
-                    state.target.state.let { targetState ->
-                        if (targetState is EntityPlayer.State.INTERACTING && targetState.target == player) {
-                            player.state = EntityPlayer.State.IDLE
-                            state.target.state = EntityPlayer.State.IDLE
-                        }
-                    }
-                }
-            }
-        }
         val (x, y) = player.location.coords
         val newX = x + (action.dx * player.speed)
         val newY = y + (action.dy * player.speed)
@@ -354,6 +343,28 @@ class World {
         }
     }
 
+    private fun closeConversation(playerId: Int){
+        val player = getPlayer(playerId) ?: return
+        val otherId = (player.state as? EntityPlayer.State.TALKING)?.conversation?.participants?.find { it != playerId }
+        otherId?.let {
+            val entity = getPlayer(it)
+            entity?.state = EntityPlayer.State.IDLE
+        }
+        player.state = EntityPlayer.State.IDLE
+    }
+
+    private fun sendMessage(playerId: Int, action: Action.SendMessage){
+        val player = getPlayer(playerId) ?: return
+        if(player.state is EntityPlayer.State.TALKING){
+            val conversation = (player.state as EntityPlayer.State.TALKING).conversation
+            conversation.addMessage(Message(
+                senderId = playerId,
+                message = action.message,
+                time = time.getTimeStringShort()
+            ))
+        }
+    }
+
     private fun interactBy(playerId: Int){
         val player = getPlayer(playerId) ?: return
         val entity = getFacingEntity(player)
@@ -361,8 +372,9 @@ class World {
             println("Interacting with $entity")
             when(entity){
                 is EntityPlayer -> {
-                    player.state = EntityPlayer.State.INTERACTING(entity)
-                    entity.state = EntityPlayer.State.INTERACTING(player)
+                    val conversation = chatManager.getConversationByIds(playerId, entity.id)
+                    player.state = EntityPlayer.State.TALKING(conversation)
+                    entity.state = EntityPlayer.State.TALKING(conversation)
                 }
                 is EntityDoor -> {
                     moveEntity(player, entity.destination)

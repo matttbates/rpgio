@@ -1,12 +1,14 @@
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.focusable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.Button
+import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -19,7 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import entities.Entity
 import kotlinx.coroutines.flow.Flow
 import entities.EntityPlayer
@@ -97,10 +101,31 @@ class GameClient(
                 .onKeyEvent {
                     when(it.type){
                         KeyEventType.KeyDown -> {
-                            keysDown.value.add(it.key)
+                            val inChat = player?.state is EntityPlayer.State.TALKING
+                            if(!inChat){
+                                keysDown.value.add(it.key)
+                            }
                             when(it.key){
-                                Key.E -> showMenu = !showMenu
-                                Key.Enter -> world.enqueueAction(playerId = gameState.playerId, action = Action.Interact)
+                                Key.E -> {
+                                    if(!inChat) {
+                                        showMenu = !showMenu
+                                    }
+                                }
+                                Key.Enter -> {
+                                    if(!inChat) {
+                                        world.enqueueAction(playerId = gameState.playerId, action = Action.Interact)
+                                    }
+                                }
+                                Key.Escape -> {
+                                    if(inChat){
+                                        world.enqueueAction(
+                                            playerId = gameState.playerId,
+                                            action = Action.CloseConversation
+                                        )
+                                        requester.requestFocus()
+                                    }
+                                }
+                                else -> {}
                             }
                         }
                         KeyEventType.KeyUp -> keysDown.value.remove(it.key)
@@ -213,6 +238,21 @@ class GameClient(
                     .background(Color.Black.copy(alpha = 1 - gameState.lightLevel))
             )
 
+            //Chat
+            var isChatting by remember { mutableStateOf(false) }
+            if(player?.state is EntityPlayer.State.TALKING){
+                isChatting = true
+                Chat(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd),
+                    player = player,
+                    gameState = gameState
+                )
+            }else if(isChatting){
+                isChatting = false
+                requester.requestFocus()
+            }
+
             //Clock
             DigitalClock(
                 modifier = Modifier
@@ -230,6 +270,79 @@ class GameClient(
                     world.disconnect(gameState.playerId)
                     disconnecting = true
                     onDisconnect()
+                }
+            )
+        }
+
+        LaunchedEffect(Unit) {
+            requester.requestFocus()
+        }
+    }
+
+    @Composable
+    private fun Chat(
+        modifier: Modifier = Modifier,
+        player: EntityPlayer,
+        gameState: GameState
+    ){
+        val conversation = (player.state as EntityPlayer.State.TALKING).conversation
+        val otherId = conversation.participants.find { it != gameState.playerId }?:-1
+        val other = gameState.entities.find { it.id == otherId }
+        var messageToSend by remember { mutableStateOf("") }
+        val requester = remember { FocusRequester() }
+        Column(
+            modifier = modifier
+                .fillMaxHeight()
+                .fillMaxWidth(0.5f)
+                .padding(10.dp)
+                .background(Color.White.copy(alpha = 0.2f))
+        ) {
+            LazyColumn(modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+            ){
+                items(conversation.messages.size){
+                    val message = conversation.messages[it]
+                    Box(modifier = Modifier.fillMaxWidth()){
+                        Column(modifier = Modifier
+                            .padding(5.dp)
+                            .align(if (message.senderId == gameState.playerId) Alignment.TopEnd else Alignment.TopStart),
+                            horizontalAlignment = if (message.senderId == gameState.playerId) Alignment.End else Alignment.Start
+                        ){
+                            Text(
+                                text = message.time,
+                                fontSize = 10.sp,
+                                textAlign = if (message.senderId == gameState.playerId) TextAlign.End else TextAlign.Start
+                            )
+                            Text(message.message)
+                        }
+                    }
+                }
+            }
+            TextField(modifier = Modifier
+                .focusRequester(requester),
+                value = messageToSend,
+                onValueChange = {
+                    messageToSend = it
+                },
+                trailingIcon = {
+                    Icon(
+                        modifier = Modifier.clickable(
+                            onClick = {
+                                world.enqueueAction(
+                                    playerId = gameState.playerId,
+                                    action = Action.SendMessage(
+                                        message = messageToSend
+                                    )
+                                )
+                                messageToSend = ""
+                                requester.requestFocus()
+                            },
+                            enabled = messageToSend.isNotEmpty()
+                        ) ,
+                        imageVector = Icons.Default.Send,
+                        contentDescription = null
+                    )
                 }
             )
         }
@@ -376,7 +489,7 @@ class GameClient(
                 .border(1.dp, color = Color.Red)
             )
         }
-        if (entity is EntityPlayer && entity.state is EntityPlayer.State.INTERACTING) {
+        if (entity is EntityPlayer && entity.state is EntityPlayer.State.TALKING) {
             Image(
                 painter = getPainter("interact.png"),
                 contentDescription = null,
