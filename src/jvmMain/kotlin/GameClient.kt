@@ -218,7 +218,7 @@ class GameClient(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(10.dp),
-                tick = gameState.tick
+                time = gameState.time
             )
 
         }
@@ -262,16 +262,11 @@ class GameClient(
     @Composable
     private fun DigitalClock(
         modifier: Modifier = Modifier,
-        tick: Int
+        time: String,
     ){
-        val hour = ((tick % World.TICKS_PER_DAY) / World.TICKS_PER_DAY * 24).toInt()
-        val amPm = if(hour < 12) "AM" else "PM"
-        val hour12 = (hour % 12).let { if(it == 0) 12 else it }
-        val minute = (((tick % World.TICKS_PER_DAY) / World.TICKS_PER_DAY * 24 * 60) % 60).toInt()
-        val minuteString = if(minute < 10) "0$minute" else "$minute"
         Text(modifier = modifier
             .background(Color.White.copy(alpha = 0.2f)),
-            text = "$hour12:$minuteString $amPm"
+            text = time
         )
     }
 
@@ -280,8 +275,8 @@ class GameClient(
         tick: Int
     ){
         val size = 100
-        val hour = ((tick % World.TICKS_PER_DAY) / World.TICKS_PER_DAY * 24).toInt()
-        val minute = ((tick % World.TICKS_PER_DAY) / World.TICKS_PER_DAY * 24 * 60).toInt()
+        val hour = 0//RpgIoTime.getHourOfDay()
+        val minute = 0//RpgIoTime.getMinuteOfDay()
         Text("Time: $hour")
         Box(
             modifier = Modifier

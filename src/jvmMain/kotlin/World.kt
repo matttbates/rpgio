@@ -1,3 +1,4 @@
+import RpgIoTime.Companion.TPS
 import entities.Entity
 import entities.EntityDoor
 import entities.EntityPlayer
@@ -20,12 +21,6 @@ class World {
     companion object {
         private val maps: MutableMap<String, MapData> = hashMapOf()//"src/jvmMain/resources/maps/map.png" to maps.MapData("src/jvmMain/resources/maps/map.png"))
         private const val CHUNK_SIZE = 20
-        const val TPS = 20
-        private const val SECONDS_PER_DAY_NIGHT_CYCLE = 60.0 * 40//40 minutes
-        const val TICKS_PER_DAY = TPS * SECONDS_PER_DAY_NIGHT_CYCLE
-        const val STARTING_HOUR = 9
-
-
 
         private fun checkSign(num: Int) = (num shr 31 or 1)
 
@@ -35,6 +30,7 @@ class World {
             return Pair((x.toInt() / CHUNK_SIZE) + qX, (y.toInt() / CHUNK_SIZE) + qY)
         }
     }
+    private val time = RpgIoTime()
 
     private var displaySize = Pair(0, 0)
     fun getDisplaySize() = displaySize
@@ -94,7 +90,6 @@ class World {
     ) {
         displaySize = Pair(rX * 2 + 1, rY * 2 + 1)
         CoroutineScope(Dispatchers.IO).launch {
-            var tick = (TICKS_PER_DAY * (STARTING_HOUR / 24f)).toInt()
             val sleepMillis = 1000 / TPS
             while (true) {
                 clientStates.forEach {
@@ -117,28 +112,29 @@ class World {
                         playerId = playerId,
                         tiles = tiles,
                         entities = entities,
-                        tick = tick,
+                        tick = time.getTick(),
                         map = player.location.map,
-                        lightLevel = calculateLightLevel(player.location.map, tick)
+                        lightLevel = calculateLightLevel(player.location.map),
+                        time = time.getTimeString()
                     )
                 }
-                tick++
+                time.advanceTime()
                 Thread.sleep(sleepMillis.toLong())
             }
         }
     }
 
-    private fun calculateLightLevel(map: String, tick: Int): Float {
+    private fun calculateLightLevel(map: String): Float {
         val mapData = maps[map] ?: return 1.0f
         return when (mapData.lightMode) {
-            LightMode.NATURAL -> lightFromTicks(tick)
+            LightMode.NATURAL -> lightFromTicks()
             LightMode.LIGHT -> 1.0f
             LightMode.DARK -> 0.5f
         }
     }
 
-    private fun lightFromTicks(tick: Int): Float {
-        val time = tick % TICKS_PER_DAY / TICKS_PER_DAY.toFloat()
+    private fun lightFromTicks(): Float {
+        val time = time.getPercentOfDay()
         val verticalStretch = 0.75f
         val horizontalShift = 1/12f
         return ((1f - cos((time - horizontalShift) * (2 * Math.PI)).toFloat()) * verticalStretch).coerceIn(0.5f, 1.0f)
