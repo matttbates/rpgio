@@ -33,7 +33,7 @@ class GameClient(
 
     companion object {
         const val DEBUG_VIEW = false
-        const val cellSize = 20
+        const val CELL_SIZE = 20
         private val painterMap = mutableMapOf<String, Painter>()
 
         @Composable
@@ -121,20 +121,20 @@ class GameClient(
                 val displayYOffset = playerY % 1
                 Box(
                     modifier = Modifier
-                        .size(width = ((width - 2) * cellSize).dp, height = ((height - 2) * cellSize).dp)
+                        .size(width = ((width - 2) * CELL_SIZE).dp, height = ((height - 2) * CELL_SIZE).dp)
                         .clipToBounds()
                         .offset(
-                            x = -cellSize.dp,
-                            y = -cellSize.dp
+                            x = -CELL_SIZE.dp,
+                            y = -CELL_SIZE.dp
                         )
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(width = (width * cellSize).dp, height = (height * cellSize).dp)
+                            .size(width = (width * CELL_SIZE).dp, height = (height * CELL_SIZE).dp)
                             .align(Alignment.Center)
                             .offset(
-                                x = (-displayXOffset * cellSize).dp,
-                                y = (-displayYOffset * cellSize).dp
+                                x = (-displayXOffset * CELL_SIZE).dp,
+                                y = (-displayYOffset * CELL_SIZE).dp
                             )
                     ) {
                         Tiles(tiles = gameState.tiles)
@@ -147,8 +147,8 @@ class GameClient(
                         //so we need to adjust the entity coords to be relative to the player
                         val adjustedX = playerOffsetX - (playerX - x)
                         val adjustedY = playerOffsetY - (playerY - y)
-                        val cellX = adjustedX * cellSize
-                        val cellY = adjustedY * cellSize
+                        val cellX = adjustedX * CELL_SIZE
+                        val cellY = adjustedY * CELL_SIZE
                         Entity(it, it.getSprite(), cellX, cellY)
                     }
 
@@ -331,15 +331,15 @@ class GameClient(
             modifier = modifier
         ) {
             tiles.forEachIndexed { r, row ->
-                val rowY = r * cellSize
+                val rowY = r * CELL_SIZE
                 row.forEachIndexed { c, tile ->
-                    val cellX = c * cellSize
+                    val cellX = c * CELL_SIZE
 
                     Image(
                         painter = getPainter("tiles/tile_${tile.sprite}.png"),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(cellSize.dp)
+                            .size(CELL_SIZE.dp)
                             .offset(
                                 x = cellX.dp,
                                 y = rowY.dp
@@ -358,7 +358,7 @@ class GameClient(
             painter = getPainter("$sprite ".trim()),
             contentDescription = null,
             modifier = Modifier
-                .size(width = cellSize.dp, height = cellSize.dp)
+                .size(width = CELL_SIZE.dp, height = CELL_SIZE.dp)
                 .offset(
                     x = x.dp,
                     y = y.dp
@@ -366,17 +366,17 @@ class GameClient(
         )
         if(DEBUG_VIEW){
             Box(modifier = Modifier
-                .size(width = cellSize.dp, height = cellSize.dp)
+                .size(width = CELL_SIZE.dp, height = CELL_SIZE.dp)
                 .offset(
                     x = x.dp,
                     y = y.dp
                 )
                 .border(1.dp, color = Color.Cyan)
                 .padding(
-                    start = (entity.hitBox.fromLeft * cellSize).dp,
-                    top = (entity.hitBox.fromTop * cellSize).dp,
-                    end = (entity.hitBox.fromRight * cellSize).dp,
-                    bottom = (entity.hitBox.fromBottom * cellSize).dp
+                    start = (entity.hitBox.fromLeft * CELL_SIZE).dp,
+                    top = (entity.hitBox.fromTop * CELL_SIZE).dp,
+                    end = (entity.hitBox.fromRight * CELL_SIZE).dp,
+                    bottom = (entity.hitBox.fromBottom * CELL_SIZE).dp
                 )
                 .border(1.dp, color = Color.Red)
             )
@@ -386,10 +386,10 @@ class GameClient(
                 painter = getPainter("interact.png"),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(width = cellSize.dp, height = cellSize.dp)
+                    .size(width = CELL_SIZE.dp, height = CELL_SIZE.dp)
                     .offset(
                         x = x.dp,
-                        y = y.dp - cellSize.dp
+                        y = y.dp - CELL_SIZE.dp
                     )
             )
         }

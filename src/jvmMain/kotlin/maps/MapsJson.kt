@@ -4,5 +4,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class MapsJson(
-    val maps: List<MapJson>
+    val maps: List<MapData>
 )

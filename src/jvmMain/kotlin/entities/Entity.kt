@@ -23,7 +23,7 @@ interface Entity {
             otherDomainMax to otherRangeMin,
             otherDomainMax to otherRangeMax
         ).any { (oX, oY) ->
-            oX in domainMin..domainMax && oY in rangeMin .. rangeMax
+            domainMin < oX && oX < domainMax && rangeMin < oY && oY < rangeMax
         }
 
         val cornerInsideOther = listOf(
@@ -32,7 +32,7 @@ interface Entity {
             getBottomLeft(),
             getBottomRight()
         ).any { (x, y) ->
-            x in otherDomainMin .. otherDomainMax && y in otherRangeMin .. otherRangeMax
+            otherDomainMin < x && x < otherDomainMax && otherRangeMin < y && y < otherRangeMax
         }
 
         return otherCornerInside || cornerInsideOther

@@ -2,13 +2,57 @@
   "maps": [
     {
       "name": "World",
-      "file": "0.png",
-      "lightMode": "NATURAL"
+      "file": "src/jvmMain/resources/maps/0.png",
+      "lightMode": "NATURAL",
+      "portals": [
+        {
+          "x": 3,
+          "y": 3,
+          "toX": 2,
+          "toY": 3,
+          "toMap": "src/jvmMain/resources/maps/1.png"
+        },
+        {
+          "x": 1,
+          "y": 2,
+          "toX": 21,
+          "toY": 27,
+          "toMap": "src/jvmMain/resources/maps/hall.png"
+        }
+      ]
     },
     {
       "name": "Building",
-      "file": "1.png",
-      "lightMode": "LIGHT"
+      "file": "src/jvmMain/resources/maps/1.png",
+      "portals": [
+        {
+          "x": 2,
+          "y": 4,
+          "toX": 3,
+          "toY": 4,
+          "toMap": "src/jvmMain/resources/maps/0.png"
+        }
+      ]
+    },
+    {
+      "name": "Hall",
+      "file": "src/jvmMain/resources/maps/hall.png",
+      "portals": [
+        {
+          "x": 20,
+          "y": 27,
+          "toX": 39,
+          "toY": 27,
+          "toMap": "src/jvmMain/resources/maps/hall.png"
+        },
+        {
+          "x": 40,
+          "y": 27,
+          "toX": 21,
+          "toY": 27,
+          "toMap": "src/jvmMain/resources/maps/hall.png"
+        }
+      ]
     }
   ]
 }

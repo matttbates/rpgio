@@ -1,4 +1,5 @@
 import entities.Entity
+import entities.EntityDoor
 import entities.EntityPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -8,7 +9,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import maps.LightMode
 import maps.MapData
-import maps.MapJson
 import maps.MapsJson
 import tiles.*
 import java.nio.file.Files
@@ -23,7 +23,17 @@ class World {
         const val TPS = 20
         private const val SECONDS_PER_DAY_NIGHT_CYCLE = 60.0 * 40//40 minutes
         const val TICKS_PER_DAY = TPS * SECONDS_PER_DAY_NIGHT_CYCLE
-        const val STARTING_HOUR = 4
+        const val STARTING_HOUR = 9
+
+
+
+        private fun checkSign(num: Int) = (num shr 31 or 1)
+
+        fun getChunkCoords(x: Float, y: Float): Pair<Int, Int>{
+            val qX = checkSign(x.toInt())
+            val qY = checkSign(y.toInt())
+            return Pair((x.toInt() / CHUNK_SIZE) + qX, (y.toInt() / CHUNK_SIZE) + qY)
+        }
     }
 
     private var displaySize = Pair(0, 0)
@@ -41,12 +51,8 @@ class World {
     init {
         val jsonString = readTextFile("src/jvmMain/resources/maps/maps.json")
         val mapsJson = Json.decodeFromString<MapsJson>(jsonString)
-        mapsJson.maps.forEach { mapJson ->
-            val filePath = "src/jvmMain/resources/maps/${mapJson.file}"
-            maps[filePath] = MapData(
-                map = filePath,
-                lightMode = LightMode.valueOf(mapJson.lightMode)
-            )
+        mapsJson.maps.forEach { mapData ->
+            maps[mapData.file] = mapData
         }
         maps.values.forEach { mapData ->
             mapData.rawMap?.let { imageBitmap ->
@@ -55,37 +61,23 @@ class World {
                 for (y in 0 until imageBitmap.height) {
                     for (x in 0 until imageBitmap.width) {
                         val pixel = buffer[y * imageBitmap.width + x]
-                        when {
-                            pixel == 0xFF00FF00.toInt() -> TileGrass()
-                            pixel == 0xFF0000FF.toInt() -> TileWater()
-                            pixel == 0xFF00FFFF.toInt() -> TilePath()
-                            pixel == 0xFFFF0000.toInt() -> TileSpawner()
-                            pixel == 0xFF000000.toInt() -> TileWall()
-                            //check if starts with 0xee
-                            pixel and 0xFF000000.toInt() == 0xEE000000.toInt() -> {
-                                //mapNumber = pixel and 0x00FF0000
-                                val mapNumber: Int = (pixel and 0x00FF0000) shr 16
-                                val destX: Int = (pixel and 0x0000FF00) shr 8
-                                val destY: Int = pixel and 0x000000FF
-                                println("door to map $mapNumber at $destX, $destY")
-                                TileDoor(
-                                    destination = Location(
-                                        coords = destX.toFloat() to destY.toFloat(),
-                                        map = maps["src/jvmMain/resources/maps/$mapNumber.png"]?.map ?: ""
-                                    )
-                                )
-                            }
+                        when (pixel) {
+                            0xFF00FF00.toInt() -> TileGrass()
+                            0xFF0000FF.toInt() -> TileWater()
+                            0xFF00FFFF.toInt() -> TilePath()
+                            0xFFFF0000.toInt() -> TileSpawner()
+                            0xFF000000.toInt() -> TileWall()
                             else -> null
                         }?.let { tile ->
                             setTile(Location(
                                 coords = x.toFloat() to y.toFloat(),
-                                map = mapData.map
+                                map = mapData.file
                             ), tile)
                             if (tile is TileSpawner) {
                                 mapData.spawnLocations.add(
                                     Location(
                                         coords = Pair(x.toFloat(), y.toFloat()),
-                                        map = mapData.map
+                                        map = mapData.file
                                     )
                                 )
                             }
@@ -206,14 +198,6 @@ class World {
         return entityPlayer
     }
 
-    private fun checkSign(num: Int) = (num shr 31 or 1)
-
-    private fun getChunkCoords(x: Float, y: Float): Pair<Int, Int>{
-        val qX = checkSign(x.toInt())
-        val qY = checkSign(y.toInt())
-        return Pair((x.toInt() / CHUNK_SIZE) + qX, (y.toInt() / CHUNK_SIZE) + qY)
-    }
-
     private fun setTile(location: Location, tile: Tile){
         val (x, y) = location.coords
         val (chunkX, chunkY) = getChunkCoords(x, y)
@@ -303,17 +287,19 @@ class World {
             from = Pair(toX.toInt() - 1, toY.toInt() - 1),
             to = Pair(toX.toInt() + 2, toY.toInt() + 2),
             map = to.map
-        )//entities in 3x3 centered on entity
+        ).filter { it.id != entity.id }//entities in 3x3 centered on entity
         val (minX, maxX) = entity.getDomain()
-        val (newMinX, newMaxX) = entity.getDomainAt(to.coords)
+        val newDomain = entity.getDomainAt(to.coords)
+        val (newMinX, newMaxX) = newDomain
         val (minY, maxY) = entity.getRange()
-        val (newMinY, newMaxY) = entity.getRangeAt(to.coords)
+        val newRange = entity.getRangeAt(to.coords)
+        val (newMinY, newMaxY) = newRange
         val motionDomain = with(listOf(minX, maxX, newMinX, newMaxX)){min() to max()}
         val motionRange = with(listOf(minY, maxY, newMinY, newMaxY)){min() to max()}
         if(entitiesInRange.any { e ->
             e.intersectsWith(
-                domain = motionDomain,
-                range = motionRange
+                domain = if(entity.location.map == to.map) motionDomain else newDomain,
+                range = if(entity.location.map == to.map) motionRange else newRange
             )
         }){
             return false
@@ -322,9 +308,6 @@ class World {
         entity.location = to
         entity.animI = (entity.animI + 1) % 8
 
-        listOf(nwTile, neTile, swTile, seTile).filterIsInstance<TileDoor>().firstOrNull()?.let { door ->
-            return moveEntity(entity, door.destination)
-        }
         return true
     }
 
@@ -380,9 +363,15 @@ class World {
         val entity = getFacingEntity(player)
         if(entity != null){
             println("Interacting with $entity")
-            player.state = EntityPlayer.State.INTERACTING(entity)
-            if (entity is EntityPlayer) {
-                entity.state = EntityPlayer.State.INTERACTING(player)
+            when(entity){
+                is EntityPlayer -> {
+                    player.state = EntityPlayer.State.INTERACTING(entity)
+                    entity.state = EntityPlayer.State.INTERACTING(player)
+                }
+                is EntityDoor -> {
+                    moveEntity(player, entity.destination)
+                    setEntity(player)
+                }
             }
             return
         }
@@ -391,6 +380,10 @@ class World {
     }
 
     private fun getTopTiles(from: Pair<Int, Int>, to: Pair<Int, Int>, map: String): ArrayList<ArrayList<Tile>> {
+        if(!maps.keys.contains(map)){
+            println("Map $map not found")
+            return arrayListOf()
+        }
         val (fromX, fromY) = from
         val (toX, toY) = to
         val result = ArrayList<ArrayList<Tile>>()

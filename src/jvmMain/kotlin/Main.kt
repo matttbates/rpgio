@@ -1,7 +1,5 @@
 import androidx.compose.material.MaterialTheme
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.material.Button
-import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -24,8 +22,8 @@ fun main() = application {
     val world = World()
     world.start(12, 8)
     val (w, h) = world.getDisplaySize()
-    val screenW = ((w - 2) * GameClient.cellSize).dp
-    val screenH = ((h - 2) * GameClient.cellSize).dp
+    val screenW = ((w - 2) * GameClient.CELL_SIZE).dp
+    val screenH = ((h - 2) * GameClient.CELL_SIZE).dp
     val titleHeight = 35.dp
     val mysteryWidth = 12.dp
     Window(
