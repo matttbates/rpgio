@@ -35,7 +35,7 @@ fun main() = application {
     ) {
         App(world = world)
     }
-    Window(
+    /*Window(
         onCloseRequest = ::exitApplication,
         state = WindowState(
             size = DpSize(screenW + mysteryWidth, screenH + titleHeight),
@@ -43,5 +43,5 @@ fun main() = application {
         resizable = false
     ) {
         App(world = world)
-    }
+    }*/
 }

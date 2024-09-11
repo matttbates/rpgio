@@ -63,23 +63,32 @@ class GameClient(
     @Composable
     fun Login(){
         var input by remember { mutableStateOf("") }
+        var error by remember { mutableStateOf<String?>(null) }
         Column {
             TextField(
                 value = input,
                 onValueChange = {
+                    error = null
                     input = it
                 }
             )
             Button(
                 onClick = {
                     input.toInt().let { playerId ->
-                        gameState = world.connect(playerId)
-                        isLoggedIn = true
+                        try{
+                            gameState = world.connect(playerId)
+                            isLoggedIn = true
+                        }catch (e: Exception){
+                            error = e.message
+                        }
                     }
                 },
                 enabled = input.isNotEmpty() && input.toIntOrNull() != null
             ){
                 Text("Login")
+            }
+            error?.let { e ->
+                Text(e)
             }
         }
 
