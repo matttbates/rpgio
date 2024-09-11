@@ -32,7 +32,8 @@ enum class Tile(
     );
     companion object {
         fun getById(id: Int): Tile? {
-            return values().find { it.id == id }
+            //return values().find { it.id == id }
+            return values().firstOrNull { it.ordinal == id }
         }
     }
 }

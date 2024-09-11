@@ -101,7 +101,7 @@ class GameClient(
         val keysDown = remember { mutableStateOf<MutableSet<Key>>(HashSet()) }
         val requester = remember { FocusRequester() }
         var showMenu by remember { mutableStateOf(false) }
-        var editMode by remember { mutableStateOf(false) }
+        var editMode by remember { mutableStateOf(true) }
         val tiles = remember { Tile.values() }
         var selectedEditTile by remember { mutableStateOf(Tile.values().first()) }
         var disconnecting by remember { mutableStateOf(false) }

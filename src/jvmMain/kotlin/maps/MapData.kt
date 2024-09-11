@@ -15,9 +15,9 @@ data class MapData(
     val lightMode: LightMode = LightMode.LIGHT,
     val portals: List<Portal> = emptyList()
 ){
-    private var _rawMap: ImageBitmap? = null
-    fun setRawMap(imageBitmap: ImageBitmap?){
-        _rawMap = imageBitmap
+    private var _rawMap: RawMapJson? = null
+    fun setRawMap(rawMap: RawMapJson?){
+        _rawMap = rawMap
     }
     val rawMap get() = _rawMap
     val tilesMaps = hashMapOf<Pair<Int, Int>, HashMap<Pair<Int, Int>, Tile>>()

@@ -9,12 +9,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import maps.MapData
 import maps.MapsJson
+import maps.Quadrant
 import tiles.*
 import java.nio.file.Files
 import java.nio.file.Paths
+import kotlin.math.abs
 
 class World {
 
@@ -47,19 +50,46 @@ class World {
         val jsonString = fileIO.readTextFile("src/jvmMain/resources/maps/maps.json")
         val mapsJson = Json.decodeFromString<MapsJson>(jsonString)
         mapsJson.maps.forEach { mapData ->
-            mapData.setRawMap(fileIO.createBitmapFromFile(mapData.file))
+            mapData.setRawMap(Json.decodeFromString(fileIO.readTextFile(mapData.file)))
             maps[mapData.file] = mapData
         }
         maps.values.forEach { mapData ->
-            mapData.rawMap?.let { imageBitmap ->
-                val buffer = IntArray(imageBitmap.width * imageBitmap.height)
-                imageBitmap.readPixels(buffer)
-                for (y in 0 until imageBitmap.height) {
-                    for (x in 0 until imageBitmap.width) {
-                        val pixel = buffer[y * imageBitmap.width + x]
+            mapData.rawMap?.let { rawMap ->
+                rawMap.se.forEachIndexed { y, row ->
+                    row.forEachIndexed { x, pixel ->
                         Tile.getById(pixel)?.let { tile ->
                             setTile(Location(
                                 coords = x.toFloat() to y.toFloat(),
+                                map = mapData.file
+                            ), tile)
+                        }
+                    }
+                }
+                rawMap.nw.forEachIndexed { y, row ->
+                    row.forEachIndexed { x, pixel ->
+                        Tile.getById(pixel)?.let { tile ->
+                            setTile(Location(
+                                coords = -x.inc().toFloat() to -y.inc().toFloat(),
+                                map = mapData.file
+                            ), tile)
+                        }
+                    }
+                }
+                rawMap.ne.forEachIndexed { y, row ->
+                    row.forEachIndexed { x, pixel ->
+                        Tile.getById(pixel)?.let { tile ->
+                            setTile(Location(
+                                coords = x.toFloat() to -y.inc().toFloat(),
+                                map = mapData.file
+                            ), tile)
+                        }
+                    }
+                }
+                rawMap.sw.forEachIndexed { y, row ->
+                    row.forEachIndexed { x, pixel ->
+                        Tile.getById(pixel)?.let { tile ->
+                            setTile(Location(
+                                coords = -x.inc().toFloat() to y.toFloat(),
                                 map = mapData.file
                             ), tile)
                         }
@@ -349,7 +379,46 @@ class World {
     private fun editTile(playerId: Int, x: Int, y: Int, tile: Tile){
         val player = getPlayer(playerId) ?: return
         val map = player.location.map
+
+        //update local state
         setTile(Location(coords = x.toFloat() to y.toFloat(), map), tile)
+
+        //update map file
+        val mapData = maps[map]?: return
+        val qI = when{
+            x >= 0 && y >= 0 -> Quadrant.SE
+            x >= 0 -> Quadrant.NE
+            x < 0 && y >= 0 -> Quadrant.SW
+            else -> Quadrant.NW
+        }
+        val quadrant: List<List<Int>> = when(qI){
+            Quadrant.SE -> mapData.rawMap?.se?:emptyList()
+            Quadrant.NE -> mapData.rawMap?.ne?:emptyList()
+            Quadrant.SW -> mapData.rawMap?.sw?:emptyList()
+            Quadrant.NW -> mapData.rawMap?.nw?:emptyList()
+        }
+        val width = quadrant.getOrNull(0)?.size?:0
+        val height = quadrant.size
+        val qx = if (x >= 0) x else abs(x.inc())
+        val qy = if (y >= 0) y else abs(y.inc())
+        val newQuadrant = List(maxOf(height, qy+1)){ yIndex ->
+            List(maxOf(width, qx+1)){ xIndex ->
+                if (xIndex == qx && yIndex == qy) {
+                    tile.ordinal
+                } else {
+                    quadrant.getOrNull(yIndex)?.getOrNull(xIndex)?:mapData.defaultTile.ordinal
+                }
+            }
+        }
+        mapData.setRawMap(mapData.rawMap?.let {
+            when(qI){
+                Quadrant.SE -> it.copy(se = newQuadrant)
+                Quadrant.NE -> it.copy(ne = newQuadrant)
+                Quadrant.SW -> it.copy(sw = newQuadrant)
+                Quadrant.NW -> it.copy(nw = newQuadrant)
+            }
+        })
+        fileIO.writeTextFile(mapData.file, Json.encodeToString(mapData.rawMap))
     }
 
     private fun interactBy(playerId: Int){
