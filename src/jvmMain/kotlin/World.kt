@@ -33,6 +33,7 @@ class World {
         }
     }
     private val time = RpgIoTime()
+    private val light = Light(time)
     private val chatManager = ChatManager()
 
     private var displaySize = Pair(0, 0)
@@ -117,7 +118,7 @@ class World {
                         entities = entities,
                         tick = time.getTick(),
                         map = player.location.map,
-                        lightLevel = calculateLightLevel(player.location.map),
+                        lightLevel = maps[player.location.map]?.let { map ->  light.calculateLightLevel(map) }?:1f,
                         time = time.getTimeString(),
                     )
                 }
@@ -125,22 +126,6 @@ class World {
                 Thread.sleep(sleepMillis.toLong())
             }
         }
-    }
-
-    private fun calculateLightLevel(map: String): Float {
-        val mapData = maps[map] ?: return 1.0f
-        return when (mapData.lightMode) {
-            LightMode.NATURAL -> lightFromTicks()
-            LightMode.LIGHT -> 1.0f
-            LightMode.DARK -> 0.5f
-        }
-    }
-
-    private fun lightFromTicks(): Float {
-        val time = time.getPercentOfDay()
-        val verticalStretch = 0.75f
-        val horizontalShift = 1/12f
-        return ((1f - cos((time - horizontalShift) * (2 * Math.PI)).toFloat()) * verticalStretch).coerceIn(0.5f, 1.0f)
     }
 
     private fun performAction(playerId: Int, action: Action){

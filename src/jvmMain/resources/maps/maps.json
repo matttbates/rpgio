@@ -24,6 +24,7 @@
     {
       "name": "Building",
       "file": "src/jvmMain/resources/maps/1.png",
+      "lightMode": "DARK",
       "portals": [
         {
           "x": 2,
