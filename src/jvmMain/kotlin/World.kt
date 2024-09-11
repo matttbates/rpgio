@@ -10,13 +10,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import maps.LightMode
 import maps.MapData
 import maps.MapsJson
 import tiles.*
 import java.nio.file.Files
 import java.nio.file.Paths
-import kotlin.math.cos
 
 class World {
 
@@ -32,6 +30,7 @@ class World {
             return Pair((x.toInt() / CHUNK_SIZE) + qX, (y.toInt() / CHUNK_SIZE) + qY)
         }
     }
+    private val fileIO = FileIO()
     private val time = RpgIoTime()
     private val light = Light(time)
     private val chatManager = ChatManager()
@@ -42,16 +41,13 @@ class World {
     private val clientStates = arrayListOf<MutableStateFlow<GameState>>()
     private val pendingActions = hashMapOf<Int, ArrayList<Action>>()
 
-    private fun readTextFile(fileName: String): String {
-        val projectDirAbsolutePath = Paths.get("").toAbsolutePath().toString()
-        val resourcesPath = Paths.get(projectDirAbsolutePath, fileName)
-        return Files.readString(resourcesPath)
-    }
+
 
     init {
-        val jsonString = readTextFile("src/jvmMain/resources/maps/maps.json")
+        val jsonString = fileIO.readTextFile("src/jvmMain/resources/maps/maps.json")
         val mapsJson = Json.decodeFromString<MapsJson>(jsonString)
         mapsJson.maps.forEach { mapData ->
+            mapData.setRawMap(fileIO.createBitmapFromFile(mapData.file))
             maps[mapData.file] = mapData
         }
         maps.values.forEach { mapData ->
@@ -61,26 +57,11 @@ class World {
                 for (y in 0 until imageBitmap.height) {
                     for (x in 0 until imageBitmap.width) {
                         val pixel = buffer[y * imageBitmap.width + x]
-                        when (pixel) {
-                            0xFF00FF00.toInt() -> TileGrass()
-                            0xFF0000FF.toInt() -> TileWater()
-                            0xFF00FFFF.toInt() -> TilePath()
-                            0xFFFF0000.toInt() -> TileSpawner()
-                            0xFF000000.toInt() -> TileWall()
-                            else -> null
-                        }?.let { tile ->
+                        Tile.getById(pixel)?.let { tile ->
                             setTile(Location(
                                 coords = x.toFloat() to y.toFloat(),
                                 map = mapData.file
                             ), tile)
-                            if (tile is TileSpawner) {
-                                mapData.spawnLocations.add(
-                                    Location(
-                                        coords = Pair(x.toFloat(), y.toFloat()),
-                                        map = mapData.file
-                                    )
-                                )
-                            }
                         }
                     }
                 }
@@ -114,10 +95,10 @@ class World {
                     val entities = getEntities(from, to, player.location.map)
                     it.value = GameState(
                         playerId = playerId,
+                        location = Location(from.first.toFloat() to from.second.toFloat(), player.location.map),
                         tiles = tiles,
                         entities = entities,
                         tick = time.getTick(),
-                        map = player.location.map,
                         lightLevel = maps[player.location.map]?.let { map ->  light.calculateLightLevel(map) }?:1f,
                         time = time.getTimeString(),
                     )
@@ -135,6 +116,7 @@ class World {
             Action.Interact -> interactBy(playerId)
             Action.CloseConversation -> closeConversation(playerId)
             is Action.SendMessage -> sendMessage(playerId, action)
+            is Action.EditTile -> editTile(playerId, action.x, action.y, action.tile)
         }
     }
 
@@ -185,7 +167,13 @@ class World {
         val (chunkX, chunkY) = getChunkCoords(x, y)
         maps[location.map]?.apply {
             tilesMaps[Pair(chunkX, chunkY)] = (tilesMaps[Pair(chunkX, chunkY)] ?: hashMapOf()).apply {
+                if(this[Pair(x.toInt(), y.toInt())] == Tile.TileSpawner){
+                    spawnLocations.remove(location)
+                }
                 this[Pair(x.toInt(), y.toInt())] = tile
+            }
+            if (tile == Tile.TileSpawner) {
+                spawnLocations.add(location)
             }
         }
     }
@@ -358,6 +346,12 @@ class World {
         }
     }
 
+    private fun editTile(playerId: Int, x: Int, y: Int, tile: Tile){
+        val player = getPlayer(playerId) ?: return
+        val map = player.location.map
+        setTile(Location(coords = x.toFloat() to y.toFloat(), map), tile)
+    }
+
     private fun interactBy(playerId: Int){
         val player = getPlayer(playerId) ?: return
         val entity = getFacingEntity(player)
@@ -394,7 +388,7 @@ class World {
         for (y in fromY..toY) {
             val row = ArrayList<Tile>()
             for (x in fromX..toX) {
-                val tile = getTile(Location(coords = x.toFloat() to y.toFloat(), map = map))?: TileWall()
+                val tile = getTile(Location(coords = x.toFloat() to y.toFloat(), map = map))?: Tile.TileWall
                 row.add(tile)
             }
             result.add(row)

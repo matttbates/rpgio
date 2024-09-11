@@ -1,12 +1,10 @@
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.material.Button
-import androidx.compose.material.Icon
-import androidx.compose.material.Text
-import androidx.compose.material.TextField
+import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.runtime.*
@@ -25,9 +23,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import entities.Entity
-import kotlinx.coroutines.flow.Flow
 import entities.EntityPlayer
-import tiles.*
+import kotlinx.coroutines.flow.Flow
+import tiles.Tile
 
 class GameClient(
     private val world: World
@@ -103,6 +101,9 @@ class GameClient(
         val keysDown = remember { mutableStateOf<MutableSet<Key>>(HashSet()) }
         val requester = remember { FocusRequester() }
         var showMenu by remember { mutableStateOf(false) }
+        var editMode by remember { mutableStateOf(false) }
+        val tiles = remember { Tile.values() }
+        var selectedEditTile by remember { mutableStateOf(Tile.values().first()) }
         var disconnecting by remember { mutableStateOf(false) }
         val player = gameState.entities.find { it is EntityPlayer && it.id == gameState.playerId } as EntityPlayer?
         Box(
@@ -171,7 +172,23 @@ class GameClient(
                                 y = (-displayYOffset * CELL_SIZE).dp
                             )
                     ) {
-                        Tiles(tiles = gameState.tiles)
+                        Tiles(
+                            tiles = gameState.tiles,
+                            onClick = if(editMode){
+                                { x, y ->
+                                    world.enqueueAction(
+                                        playerId = gameState.playerId,
+                                        action = Action.EditTile(
+                                            x = x + gameState.location.coords.first.toInt(),
+                                            y = y + gameState.location.coords.second.toInt(),
+                                            tile = selectedEditTile
+                                        )
+                                    )
+                                }
+                            }else{
+                                null
+                            }
+                        )
                     }
                     gameState.entities.sortedBy {
                         it.location.coords.second
@@ -231,7 +248,7 @@ class GameClient(
                                 id = gameState.playerId,
                                 location = Location(
                                     coords = playerX to playerY,
-                                    map = gameState.map
+                                    map = gameState.location.map
                                 ),
                                 facing = it
                             )
@@ -272,6 +289,42 @@ class GameClient(
 
         }
 
+        if(editMode){
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .height((CELL_SIZE * 2).dp)
+                        .background(color = Color.Black.copy(alpha = 0.5f))
+                ) {
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        items(tiles){ tile ->
+                            Image(
+                                painter = getPainter("tiles/tile_${tile.sprite}.png"),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(horizontal = 5.dp)
+                                    .size(CELL_SIZE.dp)
+                                    .border(
+                                        width = 2.dp,
+                                        color = if(tile == selectedEditTile) Color.White else Color.Transparent
+                                    )
+                                    .clickable { selectedEditTile = tile }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         if(showMenu){
             Menu(
                 gameState = gameState,
@@ -279,6 +332,11 @@ class GameClient(
                     world.disconnect(gameState.playerId)
                     disconnecting = true
                     onDisconnect()
+                },
+                editMode = editMode,
+                onEdit = {
+                    editMode = it
+                    requester.requestFocus()
                 }
             )
         }
@@ -364,7 +422,9 @@ class GameClient(
     @Composable
     private fun Menu(
         gameState: GameState,
-        onDisconnect: () -> Unit
+        onDisconnect: () -> Unit,
+        editMode: Boolean,
+        onEdit: (Boolean) -> Unit
     ){
         Column(
             modifier = Modifier
@@ -377,6 +437,13 @@ class GameClient(
                 ) {
                     Text("Logout")
                 }
+            }
+            Row{
+                Text("Edit Mode")
+                Switch(
+                    checked = editMode,
+                    onCheckedChange = onEdit
+                )
             }
         }
     }
@@ -442,7 +509,8 @@ class GameClient(
     @Composable
     private fun Tiles(
         modifier: Modifier = Modifier,
-        tiles: List<List<Tile>>
+        tiles: List<List<Tile>>,
+        onClick: ((Int, Int) -> Unit)? = null
     ){
         Box(
             modifier = modifier
@@ -460,7 +528,9 @@ class GameClient(
                             .offset(
                                 x = cellX.dp,
                                 y = rowY.dp
-                            )
+                            ).clickable(enabled = onClick != null) {
+                                onClick?.invoke(c, r)
+                            }
                     )
                 }
             }

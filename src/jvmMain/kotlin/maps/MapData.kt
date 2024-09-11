@@ -1,13 +1,12 @@
 package maps
 
 import Location
-import createBitmapFromFile
+import World
+import androidx.compose.ui.graphics.ImageBitmap
 import entities.Entity
 import entities.EntityDoor
 import kotlinx.serialization.Serializable
 import tiles.Tile
-import tiles.TileWall
-import tiles.TileWater
 
 @Serializable
 data class MapData(
@@ -16,7 +15,11 @@ data class MapData(
     val lightMode: LightMode = LightMode.LIGHT,
     val portals: List<Portal> = emptyList()
 ){
-    val rawMap = createBitmapFromFile(file)
+    private var _rawMap: ImageBitmap? = null
+    fun setRawMap(imageBitmap: ImageBitmap?){
+        _rawMap = imageBitmap
+    }
+    val rawMap get() = _rawMap
     val tilesMaps = hashMapOf<Pair<Int, Int>, HashMap<Pair<Int, Int>, Tile>>()
     val entityMaps = hashMapOf<Pair<Int, Int>, ArrayList<Entity>>().apply {
         portals.forEach {
@@ -29,8 +32,8 @@ data class MapData(
         }
     }
     val spawnLocations = arrayListOf<Location>()
-    val defaultTile: Tile = when (file){
-        "src/jvmMain/resources/maps/0.png" -> TileWater()
-        else -> TileWall()
+    val defaultTile: Tile = when (file){//todo: pull into json
+        "src/jvmMain/resources/maps/0.png" -> Tile.TileWater
+        else -> Tile.TileWall
     }
 }

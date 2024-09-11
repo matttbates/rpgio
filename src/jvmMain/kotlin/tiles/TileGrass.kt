@@ -1,6 +1,0 @@
-package tiles
-
-class TileGrass : Tile {
-    override val sprite: String = "grass"
-    override val isSolid: Boolean = false
-}
