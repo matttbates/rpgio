@@ -380,9 +380,11 @@ class World {
             println("Interacting with $entity")
             when(entity){
                 is EntityPlayer -> {
-                    val conversation = chatManager.getConversationByIds(playerId, entity.id)
-                    player.state = EntityPlayer.State.TALKING(conversation)
-                    entity.state = EntityPlayer.State.TALKING(conversation)
+                    if(entity.state is EntityPlayer.State.IDLE){
+                        val conversation = chatManager.getConversationByIds(playerId, entity.id)
+                        player.state = EntityPlayer.State.TALKING(conversation)
+                        entity.state = EntityPlayer.State.TALKING(conversation)
+                    }
                 }
                 is EntityDoor -> {
                     removeEntity(player)
