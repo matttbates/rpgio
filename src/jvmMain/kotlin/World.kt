@@ -205,6 +205,14 @@ class World {
         }
     }
 
+    private fun removeEntity(entity: Entity){
+        val (x, y) = entity.location.coords
+        val (chunkX, chunkY) = getChunkCoords(x, y)
+        maps[entity.location.map]?.apply {
+            entityMaps[Pair(chunkX, chunkY)]?.remove(entity)
+        }
+    }
+
     private fun setEntity(entity: Entity){
         val (x, y) = entity.location.coords
         val (chunkX, chunkY) = getChunkCoords(x, y)
@@ -377,6 +385,7 @@ class World {
                     entity.state = EntityPlayer.State.TALKING(conversation)
                 }
                 is EntityDoor -> {
+                    removeEntity(player)
                     moveEntity(player, entity.destination)
                     setEntity(player)
                 }
