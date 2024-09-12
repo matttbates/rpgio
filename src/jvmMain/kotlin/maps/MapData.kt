@@ -33,7 +33,7 @@ data class MapData(
     }
     val spawnLocations = arrayListOf<Location>()
     val defaultTile: Tile = when (file){//todo: pull into json
-        "src/jvmMain/resources/maps/0.png" -> Tile.TileWater
+        "src/jvmMain/resources/maps/0.json" -> Tile.TileWater
         else -> Tile.TileWall
     }
 }

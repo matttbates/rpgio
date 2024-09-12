@@ -22,6 +22,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import entities.Entity
 import entities.EntityPlayer
 import kotlinx.coroutines.flow.Flow
@@ -201,6 +202,34 @@ class GameClient(
                         val cellX = adjustedX * CELL_SIZE
                         val cellY = adjustedY * CELL_SIZE
                         Entity(it, it.getSprite(), cellX, cellY)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(width = (width * CELL_SIZE).dp, height = (height * CELL_SIZE).dp)
+                            .align(Alignment.Center)
+                            .offset(
+                                x = (-displayXOffset * CELL_SIZE).dp,
+                                y = (-displayYOffset * CELL_SIZE).dp
+                            )
+                    ) {
+                        Tiles(
+                            tiles = gameState.tiles,
+                            z = 1,
+                            onClick = if(editMode){
+                                { x, y ->
+                                    world.enqueueAction(
+                                        playerId = gameState.playerId,
+                                        action = Action.EditTile(
+                                            x = x + gameState.location.coords.first.toInt(),
+                                            y = y + gameState.location.coords.second.toInt(),
+                                            tile = selectedEditTile
+                                        )
+                                    )
+                                }
+                            }else{
+                                null
+                            }
+                        )
                     }
 
                     //Handle key presses
@@ -510,6 +539,7 @@ class GameClient(
     private fun Tiles(
         modifier: Modifier = Modifier,
         tiles: List<List<Tile>>,
+        z: Int = 0,
         onClick: ((Int, Int) -> Unit)? = null
     ){
         Box(
@@ -520,18 +550,24 @@ class GameClient(
                 row.forEachIndexed { c, tile ->
                     val cellX = c * CELL_SIZE
 
-                    Image(
-                        painter = getPainter("tiles/tile_${tile.sprite}.png"),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(CELL_SIZE.dp)
-                            .offset(
-                                x = cellX.dp,
-                                y = rowY.dp
-                            ).clickable(enabled = onClick != null) {
-                                onClick?.invoke(c, r)
-                            }
-                    )
+                    if(z == 0 || tile.inFrontOf != null){
+                        val sprite = when{
+                            z == 0 -> tile.inFrontOf?.sprite?:tile.sprite
+                            else -> tile.sprite
+                        }
+                        Image(
+                            painter = getPainter("tiles/tile_$sprite.png"),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(CELL_SIZE.dp)
+                                .offset(
+                                    x = cellX.dp,
+                                    y = rowY.dp
+                                ).clickable(enabled = onClick != null) {
+                                    onClick?.invoke(c, r)
+                                }
+                        )
+                    }
                 }
             }
 
