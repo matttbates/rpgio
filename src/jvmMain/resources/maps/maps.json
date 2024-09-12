@@ -4,6 +4,7 @@
       "name": "World",
       "file": "src/jvmMain/resources/maps/0.json",
       "lightMode": "NATURAL",
+      "defaultTile": "TileWater",
       "portals": [
 
       ]

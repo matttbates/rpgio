@@ -14,6 +14,7 @@ data class MapData(
     val name: String,
     val file: String,
     val lightMode: LightMode = LightMode.LIGHT,
+    val defaultTile: Tile = Tile.TileWall,
     val portals: List<Portal> = emptyList()
 ){
     private var _rawMap: RawMapJson? = null
@@ -33,8 +34,4 @@ data class MapData(
         }
     }
     val spawnLocations = arrayListOf<Location>()
-    val defaultTile: Tile = when (file){//todo: pull into json
-        "src/jvmMain/resources/maps/0.json" -> Tile.TileWater
-        else -> Tile.TileWall
-    }
 }
