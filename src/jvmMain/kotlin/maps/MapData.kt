@@ -1,5 +1,6 @@
 package maps
 
+import Coords
 import Location
 import World
 import androidx.compose.ui.graphics.ImageBitmap
@@ -26,8 +27,8 @@ data class MapData(
             val x = it.x
             val y = it.y
             getOrPut(World.getChunkCoords(x.toFloat(), y.toFloat())){ arrayListOf() }.add(EntityDoor(
-                location = Location(Pair(it.x.toFloat(), it.y.toFloat()), file),
-                destination = Location(Pair(it.toX.toFloat(), it.toY.toFloat()), it.toMap?:file),
+                location = Location(Coords(it.x.toFloat(), it.y.toFloat()), file),
+                destination = Location(Coords(it.toX.toFloat(), it.toY.toFloat()), it.toMap?:file),
             ))
         }
     }

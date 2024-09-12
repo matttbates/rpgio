@@ -180,8 +180,8 @@ class GameClient(
                                     world.enqueueAction(
                                         playerId = gameState.playerId,
                                         action = Action.EditTile(
-                                            x = x + gameState.location.coords.first.toInt(),
-                                            y = y + gameState.location.coords.second.toInt(),
+                                            x = x + gameState.location.coords.x.toInt(),
+                                            y = y + gameState.location.coords.y.toInt(),
                                             tile = selectedEditTile
                                         )
                                     )
@@ -192,7 +192,7 @@ class GameClient(
                         )
                     }
                     gameState.entities.sortedBy {
-                        it.location.coords.second
+                        it.location.coords.y
                     }.forEach {
                         val (x, y) = it.location.coords
                         //player coords are in the center of the screen
@@ -220,8 +220,8 @@ class GameClient(
                                     world.enqueueAction(
                                         playerId = gameState.playerId,
                                         action = Action.EditTile(
-                                            x = x + gameState.location.coords.first.toInt(),
-                                            y = y + gameState.location.coords.second.toInt(),
+                                            x = x + gameState.location.coords.x.toInt(),
+                                            y = y + gameState.location.coords.y.toInt(),
                                             tile = selectedEditTile
                                         )
                                     )
@@ -276,7 +276,7 @@ class GameClient(
                             gameState.playerId, Action.RotateEntity(
                                 id = gameState.playerId,
                                 location = Location(
-                                    coords = playerX to playerY,
+                                    coords = Coords(playerX, playerY),
                                     map = gameState.location.map
                                 ),
                                 facing = it

@@ -59,7 +59,7 @@ class World {
                     row.forEachIndexed { x, pixel ->
                         Tile.getById(pixel)?.let { tile ->
                             setTile(Location(
-                                coords = x.toFloat() to y.toFloat(),
+                                coords = Coords(x.toFloat(), y.toFloat()),
                                 map = mapData.file
                             ), tile)
                         }
@@ -69,7 +69,7 @@ class World {
                     row.forEachIndexed { x, pixel ->
                         Tile.getById(pixel)?.let { tile ->
                             setTile(Location(
-                                coords = -x.inc().toFloat() to -y.inc().toFloat(),
+                                coords = Coords(-x.inc().toFloat(), -y.inc().toFloat()),
                                 map = mapData.file
                             ), tile)
                         }
@@ -79,7 +79,7 @@ class World {
                     row.forEachIndexed { x, pixel ->
                         Tile.getById(pixel)?.let { tile ->
                             setTile(Location(
-                                coords = x.toFloat() to -y.inc().toFloat(),
+                                coords = Coords(x.toFloat(), -y.inc().toFloat()),
                                 map = mapData.file
                             ), tile)
                         }
@@ -89,7 +89,7 @@ class World {
                     row.forEachIndexed { x, pixel ->
                         Tile.getById(pixel)?.let { tile ->
                             setTile(Location(
-                                coords = -x.inc().toFloat() to y.toFloat(),
+                                coords = Coords(-x.inc().toFloat(), y.toFloat()),
                                 map = mapData.file
                             ), tile)
                         }
@@ -118,14 +118,14 @@ class World {
                     }
                     //update state
                     val player = getPlayer(playerId) ?: return@forEach
-                    val (x, y) = player.location.coords.let { (x, y) -> Pair(x.toInt(), y.toInt()) }
-                    val from = Pair(x - rX, y - rY)
-                    val to = Pair(x + rX, y + rY)
+                    val (x, y) = player.location.coords.let { (x, y) -> Pair(x.toInt().toFloat(), y.toInt().toFloat()) }
+                    val from = Coords(x - rX, y - rY)
+                    val to = Coords(x + rX, y + rY)
                     val tiles = getTopTiles(from, to, player.location.map)
                     val entities = getEntities(from, to, player.location.map)
                     it.value = GameState(
                         playerId = playerId,
-                        location = Location(from.first.toFloat() to from.second.toFloat(), player.location.map),
+                        location = Location(from, player.location.map),
                         tiles = tiles,
                         entities = entities,
                         tick = time.getTick(),
@@ -235,7 +235,7 @@ class World {
     private fun getEntities(location: Location): List<Entity>{
         val (x, y) = location.coords
         val (chunkX, chunkY) = getChunkCoords(x, y)
-        return maps[location.map]?.entityMaps?.get(Pair(chunkX, chunkY))?.filter { x.toInt() == it.location.coords.first.toInt() && y.toInt() == it.location.coords.second.toInt() }?: emptyList()
+        return maps[location.map]?.entityMaps?.get(Pair(chunkX, chunkY))?.filter { x.toInt() == it.location.coords.x.toInt() && y.toInt() == it.location.coords.y.toInt() }?: emptyList()
     }
 
     fun getPlayer(id: Int): EntityPlayer? {
@@ -259,7 +259,7 @@ class World {
         val (x, y) = player.location.coords
         val newX = x + (action.dx * player.speed)
         val newY = y + (action.dy * player.speed)
-        moveEntity(player, player.location.copy(coords = newX to newY))
+        moveEntity(player, player.location.copy(coords = Coords(newX, newY)))
         setEntity(player)
     }
 
@@ -271,17 +271,32 @@ class World {
 
     private fun moveEntity(entity: Entity, to: Location): Boolean {
         val (toX, toY) = to.coords
-        val nwTile = getTile(to.copy(coords = toX + entity.hitBox.fromLeft to toY + entity.hitBox.fromTop))
-        val neTile = getTile(to.copy(coords = toX + 1 - entity.hitBox.fromRight to toY + entity.hitBox.fromTop))
-        val swTile = getTile(to.copy(coords = toX + entity.hitBox.fromLeft to toY + 1 - entity.hitBox.fromBottom))
-        val seTile = getTile(to.copy(coords = toX + 1 - entity.hitBox.fromRight to toY + 1 - entity.hitBox.fromBottom))
+        fun Float.adjustNegative(): Float{
+            return if(this < 0) dec() else this
+        }
+        val nwTile = getTile(to.copy(coords = Coords(
+            (toX + entity.hitBox.fromLeft).adjustNegative(),
+            (toY + entity.hitBox.fromTop).adjustNegative()
+        )))
+        val neTile = getTile(to.copy(coords = Coords(
+            (toX + 1 - entity.hitBox.fromRight).adjustNegative(),
+            (toY + entity.hitBox.fromTop).adjustNegative()
+        )))
+        val swTile = getTile(to.copy(coords = Coords(
+            (toX + entity.hitBox.fromLeft).adjustNegative(),
+            (toY + 1 - entity.hitBox.fromBottom).adjustNegative()
+        )))
+        val seTile = getTile(to.copy(coords = Coords(
+            (toX + 1 - entity.hitBox.fromRight).adjustNegative(),
+            (toY + 1 - entity.hitBox.fromBottom).adjustNegative()
+        )))
         if(listOf(nwTile, neTile, swTile, seTile).any { tile -> tile == null || tile.isSolid }){
             return false
         }
 
         val entitiesInRange = getEntities(
-            from = Pair(toX.toInt() - 1, toY.toInt() - 1),
-            to = Pair(toX.toInt() + 2, toY.toInt() + 2),
+            from = Coords((toX.toInt() - 1).toFloat(), (toY.toInt() - 1).toFloat()),
+            to = Coords((toX.toInt() + 2).toFloat(), (toY.toInt() + 2).toFloat()),
             map = to.map
         ).filter { it.id != entity.id }//entities in 3x3 centered on entity
         val (minX, maxX) = entity.getDomain()
@@ -320,7 +335,7 @@ class World {
             Facing.DOWN -> tileDistance
             else -> 0f
         }
-        return getTile(player.location.copy(coords = tileTargetX to tileTargetY))
+        return getTile(player.location.copy(coords = Coords(tileTargetX, tileTargetY)))
     }
 
     private fun getFacingEntity(player: EntityPlayer): Entity? {
@@ -337,7 +352,7 @@ class World {
             Facing.DOWN -> maxDistance
             else -> 0f
         }
-        return getEntities(player.location.copy(coords = targetX to targetY), 2).filter {
+        return getEntities(player.location.copy(coords = Coords(targetX, targetY)), 2).filter {
             it.id != player.id && when (facing) {
                 Facing.LEFT -> it.getRange().let { (min, max) -> y in min..max } && it.getCenter().first < x
                 Facing.RIGHT -> it.getRange().let { (min, max) -> y in min..max } && it.getCenter().first > x
@@ -381,7 +396,7 @@ class World {
         val map = player.location.map
 
         //update local state
-        setTile(Location(coords = x.toFloat() to y.toFloat(), map), tile)
+        setTile(Location(coords = Coords(x.toFloat(), y.toFloat()), map), tile)
 
         //update map file
         val mapData = maps[map]?: return
@@ -446,7 +461,7 @@ class World {
         println("Interacting with $tile")
     }
 
-    private fun getTopTiles(from: Pair<Int, Int>, to: Pair<Int, Int>, map: String): ArrayList<ArrayList<Tile>> {
+    private fun getTopTiles(from: Coords, to: Coords, map: String): ArrayList<ArrayList<Tile>> {
         if(!maps.keys.contains(map)){
             println("Map $map not found")
             return arrayListOf()
@@ -454,10 +469,10 @@ class World {
         val (fromX, fromY) = from
         val (toX, toY) = to
         val result = ArrayList<ArrayList<Tile>>()
-        for (y in fromY..toY) {
+        for (y in fromY.toInt()..toY.toInt()) {
             val row = ArrayList<Tile>()
-            for (x in fromX..toX) {
-                val tile = getTile(Location(coords = x.toFloat() to y.toFloat(), map = map))?: Tile.TileWall
+            for (x in fromX.toInt()..toX.toInt()) {
+                val tile = getTile(Location(coords = Coords(x.toFloat(), y.toFloat()), map = map))?: Tile.TileWall
                 row.add(tile)
             }
             result.add(row)
@@ -471,7 +486,7 @@ class World {
             for (j in -r..r) {
                 result.addAll(getEntities(
                     location = location.copy(
-                        coords = location.coords.let { (x, y) -> x + i to y + j }
+                        coords = location.coords.let { (x, y) -> Coords(x + i, y + j) }
                     )
                 ))
             }
@@ -479,13 +494,13 @@ class World {
         return result
     }
 
-    private fun getEntities(from: Pair<Int, Int>, to: Pair<Int, Int>, map: String): List<Entity> {
+    private fun getEntities(from: Coords, to: Coords, map: String): List<Entity> {
         val (fromX, fromY) = from
         val (toX, toY) = to
         val result = arrayListOf<Entity>()
-        for (y in fromY..toY) {
-            for (x in fromX..toX) {
-                result.addAll(getEntities(Location(coords = x.toFloat() to y.toFloat(), map)))
+        for (y in fromY.toInt()..toY.toInt()) {
+            for (x in fromX.toInt()..toX.toInt()) {
+                result.addAll(getEntities(Location(coords = Coords(x.toFloat(), y.toFloat()), map)))
             }
         }
         return result

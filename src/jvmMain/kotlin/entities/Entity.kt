@@ -1,5 +1,6 @@
 package entities
 
+import Coords
 import Facing
 import HitBox
 import Location
@@ -38,30 +39,30 @@ interface Entity {
         return otherCornerInside || cornerInsideOther
     }
     fun getDomain(): Pair<Float, Float>{
-        return location.coords.first + hitBox.fromLeft to location.coords.first + 1 - hitBox.fromRight
+        return location.coords.x + hitBox.fromLeft to location.coords.x + 1 - hitBox.fromRight
     }
-    fun getDomainAt(newCoords: Pair<Float, Float>): Pair<Float, Float>{
-        return newCoords.first + hitBox.fromLeft to newCoords.first + 1 - hitBox.fromRight
+    fun getDomainAt(newCoords: Coords): Pair<Float, Float>{
+        return newCoords.x + hitBox.fromLeft to newCoords.x + 1 - hitBox.fromRight
     }
     fun getRange(): Pair<Float, Float>{
-        return location.coords.second + hitBox.fromTop to location.coords.second + 1 - hitBox.fromBottom
+        return location.coords.y + hitBox.fromTop to location.coords.y + 1 - hitBox.fromBottom
     }
-    fun getRangeAt(newCoords: Pair<Float, Float>): Pair<Float, Float>{
-        return newCoords.second + hitBox.fromTop to newCoords.second + 1 - hitBox.fromBottom
+    fun getRangeAt(newCoords: Coords): Pair<Float, Float>{
+        return newCoords.y + hitBox.fromTop to newCoords.y + 1 - hitBox.fromBottom
     }
     fun getCenter(): Pair<Float, Float>{
-        return location.coords.first + hitBox.fromLeft + (((1 - hitBox.fromRight) - hitBox.fromLeft) / 2) to location.coords.second + hitBox.fromTop + (((1 - hitBox.fromBottom) - hitBox.fromTop) / 2)
+        return location.coords.x + hitBox.fromLeft + (((1 - hitBox.fromRight) - hitBox.fromLeft) / 2) to location.coords.y + hitBox.fromTop + (((1 - hitBox.fromBottom) - hitBox.fromTop) / 2)
     }
     fun getTopLeft(): Pair<Float, Float>{
-        return location.coords.first + hitBox.fromLeft to location.coords.second + hitBox.fromTop
+        return location.coords.x + hitBox.fromLeft to location.coords.y + hitBox.fromTop
     }
     fun getTopRight(): Pair<Float, Float>{
-        return location.coords.first + 1 - hitBox.fromRight to location.coords.second + hitBox.fromTop
+        return location.coords.x + 1 - hitBox.fromRight to location.coords.y + hitBox.fromTop
     }
     fun getBottomLeft(): Pair<Float, Float>{
-        return location.coords.first + hitBox.fromLeft to location.coords.second + 1 - hitBox.fromBottom
+        return location.coords.x + hitBox.fromLeft to location.coords.y + 1 - hitBox.fromBottom
     }
     fun getBottomRight(): Pair<Float, Float>{
-        return location.coords.first + 1 - hitBox.fromRight to location.coords.second + 1 - hitBox.fromBottom
+        return location.coords.x + 1 - hitBox.fromRight to location.coords.y + 1 - hitBox.fromBottom
     }
 }
