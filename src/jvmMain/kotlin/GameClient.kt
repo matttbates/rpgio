@@ -1,4 +1,6 @@
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.Interaction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -6,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +21,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -336,18 +341,30 @@ class GameClient(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         items(tiles){ tile ->
-                            Image(
-                                painter = getPainter("tiles/tile_${tile.sprite}.png"),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .padding(horizontal = 5.dp)
-                                    .size(CELL_SIZE.dp)
-                                    .border(
-                                        width = 2.dp,
-                                        color = if(tile == selectedEditTile) Color.White else Color.Transparent
+                            Box {
+                                Image(
+                                    painter = getPainter("tiles/tile_${tile.sprite}.png"),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .padding(horizontal = 5.dp)
+                                        .size(CELL_SIZE.dp)
+                                        .border(
+                                            width = 2.dp,
+                                            color = if(tile == selectedEditTile) Color.White else Color.Transparent
+                                        )
+                                        .clickable { selectedEditTile = tile }
+                                )
+                                if(tile.isSolid){
+                                    Icon(
+                                        modifier = Modifier
+                                            .padding(horizontal = 2.dp)
+                                            .size((CELL_SIZE / 4).dp),
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = null,
+                                        tint = Color.Red
                                     )
-                                    .clickable { selectedEditTile = tile }
-                            )
+                                }
+                            }
                         }
                     }
                 }
