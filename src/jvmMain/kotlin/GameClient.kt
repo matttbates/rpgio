@@ -1,4 +1,5 @@
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -23,6 +24,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -177,23 +179,26 @@ class GameClient(
                                 x = (-displayXOffset * CELL_SIZE).dp,
                                 y = (-displayYOffset * CELL_SIZE).dp
                             )
+                            .pointerInput(Unit){
+                                detectTapGestures { offset ->
+                                    if(editMode){
+                                        val x = (offset.x / CELL_SIZE.dp.toPx()).toInt()
+                                        val y = (offset.y / CELL_SIZE.dp.toPx()).toInt()
+                                        world.enqueueAction(
+                                            playerId = gameState.playerId,
+                                            action = Action.EditTile(
+                                                x = x + gameState.location.coords.x.toInt(),
+                                                y = y + gameState.location.coords.y.toInt(),
+                                                tile = selectedEditTile
+                                            )
+                                        )
+                                        requester.requestFocus()
+                                    }
+                                }
+                            }
                     ) {
                         Tiles(
-                            tiles = gameState.tiles,
-                            onClick = if(editMode){
-                                { x, y ->
-                                    world.enqueueAction(
-                                        playerId = gameState.playerId,
-                                        action = Action.EditTile(
-                                            x = x + gameState.location.coords.x.toInt(),
-                                            y = y + gameState.location.coords.y.toInt(),
-                                            tile = selectedEditTile
-                                        )
-                                    )
-                                }
-                            }else{
-                                null
-                            }
+                            tiles = gameState.tiles
                         )
                     }
                     gameState.entities.sortedBy {
@@ -219,21 +224,7 @@ class GameClient(
                     ) {
                         Tiles(
                             tiles = gameState.tiles,
-                            z = 1,
-                            onClick = if(editMode){
-                                { x, y ->
-                                    world.enqueueAction(
-                                        playerId = gameState.playerId,
-                                        action = Action.EditTile(
-                                            x = x + gameState.location.coords.x.toInt(),
-                                            y = y + gameState.location.coords.y.toInt(),
-                                            tile = selectedEditTile
-                                        )
-                                    )
-                                }
-                            }else{
-                                null
-                            }
+                            z = 1
                         )
                     }
 
@@ -556,8 +547,7 @@ class GameClient(
     private fun Tiles(
         modifier: Modifier = Modifier,
         tiles: List<List<Tile>>,
-        z: Int = 0,
-        onClick: ((Int, Int) -> Unit)? = null
+        z: Int = 0
     ){
         Box(
             modifier = modifier
@@ -580,9 +570,7 @@ class GameClient(
                                 .offset(
                                     x = cellX.dp,
                                     y = rowY.dp
-                                ).clickable(enabled = onClick != null) {
-                                    onClick?.invoke(c, r)
-                                }
+                                )
                         )
                     }
                 }
