@@ -323,6 +323,9 @@ class World {
     }
 
     private fun getFacingTile(player: EntityPlayer): Tile? {
+        fun Float.adjustNegative(): Float{
+            return if(this < 0) dec() else this
+        }
         val (centerX, centerY) = player.getCenter()
         val tileDistance = 1f
         val tileTargetX = centerX + when(player.facing){
@@ -335,7 +338,7 @@ class World {
             Facing.DOWN -> tileDistance
             else -> 0f
         }
-        return getTile(player.location.copy(coords = Coords(tileTargetX, tileTargetY)))
+        return getTile(player.location.copy(coords = Coords(tileTargetX.adjustNegative(), tileTargetY.adjustNegative())))
     }
 
     private fun getFacingEntity(player: EntityPlayer): Entity? {
