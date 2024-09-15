@@ -14,10 +14,7 @@ import kotlinx.serialization.json.Json
 import maps.MapData
 import maps.MapsJson
 import maps.Quadrant
-import org.jetbrains.skia.impl.Log
 import tiles.*
-import java.nio.file.Files
-import java.nio.file.Paths
 import kotlin.math.abs
 
 class World {
@@ -214,12 +211,12 @@ class World {
         val (chunkX, chunkY) = getChunkCoords(x, y)
         maps[location.map]?.apply {
             tilesMaps[Pair(chunkX, chunkY)] = (tilesMaps[Pair(chunkX, chunkY)] ?: hashMapOf()).apply {
-                if(this[Pair(x.toInt(), y.toInt())] == Tile.TileSpawner){
+                if(this[Pair(x.toInt(), y.toInt())] == Tile.Spawner){
                     spawnLocations.remove(location)
                 }
                 this[Pair(x.toInt(), y.toInt())] = tile
             }
-            if (tile == Tile.TileSpawner) {
+            if (tile == Tile.Spawner) {
                 spawnLocations.add(location)
             }
         }
@@ -509,7 +506,7 @@ class World {
         for (y in fromY.toInt()..toY.toInt()) {
             val row = ArrayList<Tile>()
             for (x in fromX.toInt()..toX.toInt()) {
-                val tile = getTile(Location(coords = Coords(x.toFloat(), y.toFloat()), map = map))?: Tile.TileWall
+                val tile = getTile(Location(coords = Coords(x.toFloat(), y.toFloat()), map = map))?: Tile.Wall
                 row.add(tile)
             }
             result.add(row)

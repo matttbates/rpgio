@@ -3,7 +3,6 @@ package maps
 import Coords
 import Location
 import World
-import androidx.compose.ui.graphics.ImageBitmap
 import entities.Entity
 import entities.EntityDoor
 import kotlinx.serialization.Serializable
@@ -14,7 +13,7 @@ data class MapData(
     val name: String,
     val file: String,
     val lightMode: LightMode = LightMode.LIGHT,
-    val defaultTile: Tile = Tile.TileWall,
+    val defaultTile: Tile = Tile.Wall,
     val portals: List<Portal> = emptyList()
 ){
     private var _rawMap: RawMapJson? = null

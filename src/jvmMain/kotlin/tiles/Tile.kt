@@ -5,86 +5,86 @@ enum class Tile(
     val isSolid: Boolean,
     val inFrontOf: Tile? = null
 ) {
-    TileGrass(
+    Grass(
         sprite = "grass",
         isSolid = false
     ),
-    TilePath(
+    Path(
         sprite = "path",
         isSolid = false
     ),
-    TileSpawner(
+    Spawner(
         sprite = "spawner",
         isSolid = false
     ),
-    TileWall(
+    Wall(
         sprite = "wall",
         isSolid = true
     ),
-    TileWater(
+    Water(
         sprite = "water",
         isSolid = true
     ),
-    TileTreeTrunk(
+    TreeTrunk(
         sprite = "tree_trunk",
         isSolid = true
     ),
-    TileTreeTop(
+    TreeTop(
         sprite = "tree_top",
         isSolid = false,
-        inFrontOf = TileGrass
+        inFrontOf = Grass
     ),
-    TileTreeTopDense(
+    TreeTopDense(
         sprite = "tree_top",
         isSolid = true,
-        inFrontOf = TileTreeTrunk
+        inFrontOf = TreeTrunk
     ),
-    TileBuildingBottomLeft(
+    BuildingBottomLeft(
         sprite = "building_bottom_left",
         isSolid = true
     ),
-    TileBuildingBottom(
+    BuildingBottom(
         sprite = "building_bottom",
         isSolid = true
     ),
-    TileBuildingBottomRight(
+    BuildingBottomRight(
         sprite = "building_bottom_right",
         isSolid = true
     ),
-    TileFlowers(
+    Flowers(
         sprite = "flowers",
         isSolid = false
     ),
-    TileBuildingTopLeft(
+    BuildingTopLeft(
         sprite = "building_top_left",
         isSolid = false,
-        inFrontOf = TileGrass
+        inFrontOf = Grass
     ),
-    TileBuildingTop(
+    BuildingTop(
         sprite = "building_top",
         isSolid = false,
-        inFrontOf = TileGrass
+        inFrontOf = Grass
     ),
-    TileBuildingTopRight(
+    BuildingTopRight(
         sprite = "building_top_right",
         isSolid = false,
-        inFrontOf = TileGrass
+        inFrontOf = Grass
     ),
-    TileBuildingMiddleLeft(
+    BuildingMiddleLeft(
         sprite = "building_middle_left",
         isSolid = true,
-        inFrontOf = TileGrass
+        inFrontOf = Grass
     ),
-    TileBuildingMiddle(
+    BuildingMiddle(
         sprite = "building_middle",
         isSolid = true
     ),
-    TileBuildingMiddleRight(
+    BuildingMiddleRight(
         sprite = "building_middle_right",
         isSolid = true,
-        inFrontOf = TileGrass
+        inFrontOf = Grass
     ),
-    TileSand(
+    Sand(
         sprite = "sand",
         isSolid = false
     );

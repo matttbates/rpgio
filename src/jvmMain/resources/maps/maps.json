@@ -4,7 +4,7 @@
       "name": "World",
       "file": "src/jvmMain/resources/maps/0.json",
       "lightMode": "NATURAL",
-      "defaultTile": "TileWater",
+      "defaultTile": "Water",
       "portals": [
         {
           "x": -1,
@@ -18,7 +18,7 @@
       "name": "1",
       "file": "src/jvmMain/resources/maps/1.json",
       "lightMode": "NATURAL",
-      "defaultTile": "TileWall",
+      "defaultTile": "Wall",
       "portals": [
 
       ]
