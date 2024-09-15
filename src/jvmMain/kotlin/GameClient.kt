@@ -99,7 +99,7 @@ class GameClient(
                         }
                     }
                 },
-                enabled = input.isNotEmpty() && input.toIntOrNull() != null
+                enabled = input.isNotEmpty() && input.toIntOrNull() != null && input.toInt() >= 0
             ){
                 Text("Login")
             }
