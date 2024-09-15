@@ -19,10 +19,12 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
@@ -33,13 +35,21 @@ import androidx.compose.ui.zIndex
 import entities.Entity
 import entities.EntityPlayer
 import kotlinx.coroutines.flow.Flow
+import org.jetbrains.skia.impl.Log
 import tiles.Tile
 
 class GameClient(
     private val world: World
 ){
+
+    enum class SessionState{
+        LOGGED_IN,
+        LOGGED_OUT,
+        EDIT_MODE
+    }
+
     private var gameState: Flow<GameState>? by mutableStateOf(null)
-    private var isLoggedIn by mutableStateOf(false)
+    private var sessionState: SessionState by mutableStateOf(SessionState.LOGGED_OUT)
 
     companion object {
         const val DEBUG_VIEW = false
@@ -55,14 +65,14 @@ class GameClient(
     @Composable
     fun Display(){
         println("Rendering display")
-        if(isLoggedIn){
-            Game(
-                onDisconnect = {
-                    isLoggedIn = false
-                }
-            )
-        } else {
-            Login()
+        when(sessionState){
+            SessionState.LOGGED_IN -> Game{
+                sessionState = SessionState.LOGGED_OUT
+            }
+            SessionState.EDIT_MODE -> EditMode{
+                sessionState = SessionState.LOGGED_OUT
+            }
+            else -> Login()
         }
     }
 
@@ -83,7 +93,7 @@ class GameClient(
                     input.toInt().let { playerId ->
                         try{
                             gameState = world.connect(playerId)
-                            isLoggedIn = true
+                            sessionState = SessionState.LOGGED_IN
                         }catch (e: Exception){
                             error = e.message
                         }
@@ -93,11 +103,143 @@ class GameClient(
             ){
                 Text("Login")
             }
+            Button(
+                onClick = {
+                    try{
+                        gameState = world.connectInEditMode()
+                        sessionState = SessionState.EDIT_MODE
+                    }catch (e: Exception){
+                        error = e.message
+                    }
+                }
+            ){
+                Text("Edit Mode")
+            }
             error?.let { e ->
                 Text(e)
             }
         }
 
+    }
+
+    @OptIn(ExperimentalComposeUiApi::class)
+    @Composable
+    fun EditMode(
+        onExit: () -> Unit
+    ){
+        var selectedEditTile by remember { mutableStateOf(Tile.values().first()) }
+        val gameState by gameState?.collectAsState(GameState())?:return
+        val keysDown = remember { mutableStateOf<MutableSet<Key>>(HashSet()) }
+        val requester = remember { FocusRequester() }
+        val player = (gameState.entities.find { it is EntityPlayer && it.id == gameState.playerId } as EntityPlayer?)?:return
+
+        Board(
+            modifier = Modifier
+                .focusRequester(requester)
+                .focusable()
+                .onKeyEvent {
+                    when(it.type){
+                        KeyEventType.KeyDown -> keysDown.value.add(it.key)
+                        KeyEventType.KeyUp -> keysDown.value.remove(it.key)
+                    }
+                    true
+                },
+            location = player.location,
+            tiles = gameState.tiles,
+            entities = gameState.entities,
+            onTap = { offset ->
+                val x = (offset.x / CELL_SIZE.dp.toPx()).toInt()
+                val y = (offset.y / CELL_SIZE.dp.toPx()).toInt()
+                world.enqueueAction(
+                    playerId = gameState.playerId,
+                    action = Action.EditTile(
+                        x = x + gameState.location.coords.x.toInt(),
+                        y = y + gameState.location.coords.y.toInt(),
+                        tile = selectedEditTile
+                    )
+                )
+                requester.requestFocus()
+            }
+        )
+
+        //Handle key presses
+        var dX = 0
+        var dY = 0
+        keysDown.value.forEach { key ->
+            when (key) {
+                Key.W -> {
+                    dY -= 1
+                }
+
+                Key.A -> {
+                    dX -= 1
+                }
+
+                Key.S -> {
+                    dY += 1
+                }
+
+                Key.D -> {
+                    dX += 1
+                }
+            }
+        }
+        if (dX != 0) {
+            world.enqueueAction(gameState.playerId, Action.MovePlayer(dX, 0))
+        }
+        if (dY != 0) {
+            world.enqueueAction(gameState.playerId, Action.MovePlayer(0, dY))
+        }
+
+        LaunchedEffect(Unit) {
+            requester.requestFocus()
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height((CELL_SIZE * 2).dp)
+                    .background(color = Color.Black.copy(alpha = 0.5f))
+            ) {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    items(Tile.values()){ tile ->
+                        Box {
+                            Image(
+                                painter = getPainter("tiles/tile_${tile.sprite}.png"),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(horizontal = 5.dp)
+                                    .size(CELL_SIZE.dp)
+                                    .border(
+                                        width = 2.dp,
+                                        color = if(tile == selectedEditTile) Color.White else Color.Transparent
+                                    )
+                                    .clickable { selectedEditTile = tile }
+                            )
+                            if(tile.isSolid){
+                                Icon(
+                                    modifier = Modifier
+                                        .padding(horizontal = 2.dp)
+                                        .size((CELL_SIZE / 4).dp),
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = Color.Red
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @OptIn(ExperimentalComposeUiApi::class)
@@ -109,277 +251,225 @@ class GameClient(
         val keysDown = remember { mutableStateOf<MutableSet<Key>>(HashSet()) }
         val requester = remember { FocusRequester() }
         var showMenu by remember { mutableStateOf(false) }
-        var editMode by remember { mutableStateOf(true) }
-        val tiles = remember { Tile.values() }
-        var selectedEditTile by remember { mutableStateOf(Tile.values().first()) }
         var disconnecting by remember { mutableStateOf(false) }
         val player = gameState.entities.find { it is EntityPlayer && it.id == gameState.playerId } as EntityPlayer?
-        Box(
-            modifier = Modifier
-                .onKeyEvent {
-                    when(it.type){
-                        KeyEventType.KeyDown -> {
-                            val inChat = player?.state is EntityPlayer.State.TALKING
-                            if(!inChat){
-                                keysDown.value.add(it.key)
+
+        if (player != null){
+            Board(
+                modifier = Modifier
+                    .focusRequester(requester)
+                    .focusable()
+                    .onKeyEvent {
+                        when(it.type){
+                            KeyEventType.KeyDown -> {
+                                val inChat = player.state is EntityPlayer.State.TALKING
+                                if(!inChat){
+                                    keysDown.value.add(it.key)
+                                }
+                                when(it.key){
+                                    Key.E -> {
+                                        if(!inChat) {
+                                            showMenu = !showMenu
+                                        }
+                                    }
+                                    Key.Enter -> {
+                                        if(!inChat) {
+                                            world.enqueueAction(playerId = gameState.playerId, action = Action.Interact)
+                                        }
+                                    }
+                                    Key.Escape -> {
+                                        if(inChat){
+                                            world.enqueueAction(
+                                                playerId = gameState.playerId,
+                                                action = Action.CloseConversation
+                                            )
+                                            requester.requestFocus()
+                                        }
+                                    }
+                                    else -> {}
+                                }
                             }
-                            when(it.key){
-                                Key.E -> {
-                                    if(!inChat) {
-                                        showMenu = !showMenu
-                                    }
-                                }
-                                Key.Enter -> {
-                                    if(!inChat) {
-                                        world.enqueueAction(playerId = gameState.playerId, action = Action.Interact)
-                                    }
-                                }
-                                Key.Escape -> {
-                                    if(inChat){
-                                        world.enqueueAction(
-                                            playerId = gameState.playerId,
-                                            action = Action.CloseConversation
-                                        )
-                                        requester.requestFocus()
-                                    }
-                                }
-                                else -> {}
-                            }
+                            KeyEventType.KeyUp -> keysDown.value.remove(it.key)
                         }
-                        KeyEventType.KeyUp -> keysDown.value.remove(it.key)
+                        true
+                    },
+                location = player.location,
+                tiles = gameState.tiles,
+                entities = gameState.entities,
+                decoration = {
+                    //Lighting
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 1 - gameState.lightLevel))
+                    )
+
+                    //Chat
+                    var isChatting by remember { mutableStateOf(false) }
+                    if(player.state is EntityPlayer.State.TALKING){
+                        isChatting = true
+                        Chat(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd),
+                            player = player,
+                            gameState = gameState
+                        )
+                    }else if(isChatting){
+                        isChatting = false
+                        requester.requestFocus()
                     }
-                    true
+
+                    //Clock
+                    DigitalClock(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(10.dp),
+                        time = gameState.time
+                    )
                 }
-                .focusRequester(requester)
-                .focusable()
+            )
+
+            //Handle key presses
+            var dX = 0
+            var dY = 0
+            keysDown.value.forEach { key ->
+                when (key) {
+                    Key.W -> {
+                        dY -= 1
+                    }
+
+                    Key.A -> {
+                        dX -= 1
+                    }
+
+                    Key.S -> {
+                        dY += 1
+                    }
+
+                    Key.D -> {
+                        dX += 1
+                    }
+                }
+            }
+            if (dX != 0) {
+                world.enqueueAction(gameState.playerId, Action.MovePlayer(dX, 0))
+            }
+            if (dY != 0) {
+                world.enqueueAction(gameState.playerId, Action.MovePlayer(0, dY))
+            }
+            val facing = when {
+                dX == 1 && dY == 0 -> Facing.RIGHT
+                dX == 1 && dY == 1 -> Facing.RIGHT
+                dX == 0 && dY == 1 -> Facing.DOWN
+                dX == -1 && dY == 1 -> Facing.LEFT
+                dX == -1 && dY == 0 -> Facing.LEFT
+                dX == -1 && dY == -1 -> Facing.LEFT
+                dX == 0 && dY == -1 -> Facing.UP
+                dX == 1 && dY == -1 -> Facing.RIGHT
+                else -> null
+            }
+            facing?.let {
+                world.enqueueAction(
+                    gameState.playerId, Action.RotateEntity(
+                        id = gameState.playerId,
+                        location = player.location,
+                        facing = it
+                    )
+                )
+            }
+
+            if(showMenu){
+                Menu(
+                    gameState = gameState,
+                    onDisconnect = {
+                        world.disconnect(gameState.playerId)
+                        disconnecting = true
+                        onDisconnect()
+                    }
+                )
+            }
+
+            LaunchedEffect(Unit) {
+                requester.requestFocus()
+            }
+        }
+    }
+
+    @Composable
+    private fun Board(
+        modifier: Modifier = Modifier,
+        location: Location,
+        tiles: List<List<Tile>>,
+        entities: List<Entity>,
+        onTap: (PointerInputScope.(Offset) -> Unit)? = null,
+        decoration: @Composable (BoxScope.() -> Unit)? = null
+    ){
+        Box(
+            modifier = modifier
                 .fillMaxSize()
         ) {
             val (width, height) = world.getDisplaySize()
-            if (player != null) {
-                val playerOffsetX = (width - 1) / 2
-                val playerOffsetY = (height - 1) / 2
+            val playerOffsetX = (width - 1) / 2
+            val playerOffsetY = (height - 1) / 2
 
-                val (playerX, playerY) = player.location.coords
-                val displayXOffset = playerX % 1
-                val displayYOffset = playerY % 1
-                Box(
-                    modifier = Modifier
-                        .size(width = ((width - 2) * CELL_SIZE).dp, height = ((height - 2) * CELL_SIZE).dp)
-                        .clipToBounds()
-                        .offset(
-                            x = -CELL_SIZE.dp,
-                            y = -CELL_SIZE.dp
-                        )
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(width = (width * CELL_SIZE).dp, height = (height * CELL_SIZE).dp)
-                            .align(Alignment.Center)
-                            .offset(
-                                x = (-displayXOffset * CELL_SIZE).dp,
-                                y = (-displayYOffset * CELL_SIZE).dp
-                            )
-                            .pointerInput(Unit){
-                                detectTapGestures { offset ->
-                                    if(editMode){
-                                        val x = (offset.x / CELL_SIZE.dp.toPx()).toInt()
-                                        val y = (offset.y / CELL_SIZE.dp.toPx()).toInt()
-                                        world.enqueueAction(
-                                            playerId = gameState.playerId,
-                                            action = Action.EditTile(
-                                                x = x + gameState.location.coords.x.toInt(),
-                                                y = y + gameState.location.coords.y.toInt(),
-                                                tile = selectedEditTile
-                                            )
-                                        )
-                                        requester.requestFocus()
-                                    }
-                                }
-                            }
-                    ) {
-                        Tiles(
-                            tiles = gameState.tiles
-                        )
-                    }
-                    gameState.entities.sortedBy {
-                        it.location.coords.y
-                    }.forEach {
-                        val (x, y) = it.location.coords
-                        //player coords are in the center of the screen
-                        //so we need to adjust the entity coords to be relative to the player
-                        val adjustedX = playerOffsetX - (playerX - x)
-                        val adjustedY = playerOffsetY - (playerY - y)
-                        val cellX = adjustedX * CELL_SIZE
-                        val cellY = adjustedY * CELL_SIZE
-                        Entity(it, it.getSprite(), cellX, cellY)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(width = (width * CELL_SIZE).dp, height = (height * CELL_SIZE).dp)
-                            .align(Alignment.Center)
-                            .offset(
-                                x = (-displayXOffset * CELL_SIZE).dp,
-                                y = (-displayYOffset * CELL_SIZE).dp
-                            )
-                    ) {
-                        Tiles(
-                            tiles = gameState.tiles,
-                            z = 1
-                        )
-                    }
-
-                    //Handle key presses
-                    var dX = 0
-                    var dY = 0
-                    keysDown.value.forEach { key ->
-                        when (key) {
-                            Key.W -> {
-                                dY -= 1
-                            }
-
-                            Key.A -> {
-                                dX -= 1
-                            }
-
-                            Key.S -> {
-                                dY += 1
-                            }
-
-                            Key.D -> {
-                                dX += 1
-                            }
-                        }
-                    }
-                    if (dX != 0) {
-                        world.enqueueAction(gameState.playerId, Action.MovePlayer(dX, 0))
-                    }
-                    if (dY != 0) {
-                        world.enqueueAction(gameState.playerId, Action.MovePlayer(0, dY))
-                    }
-                    val facing = when {
-                        dX == 1 && dY == 0 -> Facing.RIGHT
-                        dX == 1 && dY == 1 -> Facing.RIGHT
-                        dX == 0 && dY == 1 -> Facing.DOWN
-                        dX == -1 && dY == 1 -> Facing.LEFT
-                        dX == -1 && dY == 0 -> Facing.LEFT
-                        dX == -1 && dY == -1 -> Facing.LEFT
-                        dX == 0 && dY == -1 -> Facing.UP
-                        dX == 1 && dY == -1 -> Facing.RIGHT
-                        else -> null
-                    }
-                    facing?.let {
-                        world.enqueueAction(
-                            gameState.playerId, Action.RotateEntity(
-                                id = gameState.playerId,
-                                location = Location(
-                                    coords = Coords(playerX, playerY),
-                                    map = gameState.location.map
-                                ),
-                                facing = it
-                            )
-                        )
-                    }
-                }
-            }
-
-            //Lighting
+            val (playerX, playerY) = location.coords
+            val displayXOffset = playerX % 1
+            val displayYOffset = playerY % 1
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 1 - gameState.lightLevel))
-            )
-
-            //Chat
-            var isChatting by remember { mutableStateOf(false) }
-            if(player?.state is EntityPlayer.State.TALKING){
-                isChatting = true
-                Chat(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd),
-                    player = player,
-                    gameState = gameState
-                )
-            }else if(isChatting){
-                isChatting = false
-                requester.requestFocus()
-            }
-
-            //Clock
-            DigitalClock(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(10.dp),
-                time = gameState.time
-            )
-
-        }
-
-        if(editMode){
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
+                    .size(width = ((width - 2) * CELL_SIZE).dp, height = ((height - 2) * CELL_SIZE).dp)
+                    .clipToBounds()
+                    .offset(
+                        x = -CELL_SIZE.dp,
+                        y = -CELL_SIZE.dp
+                    )
             ) {
                 Box(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .height((CELL_SIZE * 2).dp)
-                        .background(color = Color.Black.copy(alpha = 0.5f))
-                ) {
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        items(tiles){ tile ->
-                            Box {
-                                Image(
-                                    painter = getPainter("tiles/tile_${tile.sprite}.png"),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .padding(horizontal = 5.dp)
-                                        .size(CELL_SIZE.dp)
-                                        .border(
-                                            width = 2.dp,
-                                            color = if(tile == selectedEditTile) Color.White else Color.Transparent
-                                        )
-                                        .clickable { selectedEditTile = tile }
-                                )
-                                if(tile.isSolid){
-                                    Icon(
-                                        modifier = Modifier
-                                            .padding(horizontal = 2.dp)
-                                            .size((CELL_SIZE / 4).dp),
-                                        imageVector = Icons.Default.Lock,
-                                        contentDescription = null,
-                                        tint = Color.Red
-                                    )
-                                }
+                        .size(width = (width * CELL_SIZE).dp, height = (height * CELL_SIZE).dp)
+                        .align(Alignment.Center)
+                        .offset(
+                            x = (-displayXOffset * CELL_SIZE).dp,
+                            y = (-displayYOffset * CELL_SIZE).dp
+                        )
+                        .pointerInput(Unit){
+                            detectTapGestures{ offset ->
+                                onTap?.invoke(this, offset)
                             }
                         }
-                    }
+                ) {
+                    Tiles(
+                        tiles = tiles
+                    )
+                }
+                entities.sortedBy {
+                    it.location.coords.y
+                }.filter { it !is EntityPlayer || !it.isEditing }.forEach {
+                    val (x, y) = it.location.coords
+                    //player coords are in the center of the screen
+                    //so we need to adjust the entity coords to be relative to the player
+                    val adjustedX = playerOffsetX - (playerX - x)
+                    val adjustedY = playerOffsetY - (playerY - y)
+                    val cellX = adjustedX * CELL_SIZE
+                    val cellY = adjustedY * CELL_SIZE
+                    Entity(it, it.getSprite(), cellX, cellY)
+                }
+                Box(
+                    modifier = Modifier
+                        .size(width = (width * CELL_SIZE).dp, height = (height * CELL_SIZE).dp)
+                        .align(Alignment.Center)
+                        .offset(
+                            x = (-displayXOffset * CELL_SIZE).dp,
+                            y = (-displayYOffset * CELL_SIZE).dp
+                        )
+                ) {
+                    Tiles(
+                        tiles = tiles,
+                        z = 1
+                    )
                 }
             }
-        }
-
-        if(showMenu){
-            Menu(
-                gameState = gameState,
-                onDisconnect = {
-                    world.disconnect(gameState.playerId)
-                    disconnecting = true
-                    onDisconnect()
-                },
-                editMode = editMode,
-                onEdit = {
-                    editMode = it
-                    requester.requestFocus()
-                }
-            )
-        }
-
-        LaunchedEffect(Unit) {
-            requester.requestFocus()
+            decoration?.invoke(this)
         }
     }
 
@@ -460,8 +550,6 @@ class GameClient(
     private fun Menu(
         gameState: GameState,
         onDisconnect: () -> Unit,
-        editMode: Boolean,
-        onEdit: (Boolean) -> Unit
     ){
         Column(
             modifier = Modifier
@@ -474,13 +562,6 @@ class GameClient(
                 ) {
                     Text("Logout")
                 }
-            }
-            Row{
-                Text("Edit Mode")
-                Switch(
-                    checked = editMode,
-                    onCheckedChange = onEdit
-                )
             }
         }
     }

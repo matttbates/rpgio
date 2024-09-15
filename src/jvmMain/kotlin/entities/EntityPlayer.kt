@@ -7,11 +7,12 @@ import chat.Conversation
 
 class EntityPlayer(
     override val id: Int,
-    val speed: Float = 0.2f,
+    var speed: Float = 0.2f,
     override var location: Location,
     override var facing: Facing = Facing.DOWN,
     var state: State = State.IDLE
 ) : Entity {
+    val isEditing = id == -1
     override fun getSprite(): String {
         return when (facing) {
             Facing.RIGHT -> "walk/walk_right_$animI.png"

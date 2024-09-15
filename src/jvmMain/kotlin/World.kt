@@ -14,6 +14,7 @@ import kotlinx.serialization.json.Json
 import maps.MapData
 import maps.MapsJson
 import maps.Quadrant
+import org.jetbrains.skia.impl.Log
 import tiles.*
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -167,6 +168,19 @@ class World {
         return state
     }
 
+    fun connectInEditMode(): Flow<GameState> {
+        val playerId = -1
+        val player = getOrSpawnPlayerEntity(playerId)//for later use
+        player.speed = 0.5f
+        val state = MutableStateFlow(GameState(
+            playerId = playerId,
+            tiles = listOf(),
+            tick = 0
+        ))
+        clientStates.add(state)
+        return state
+    }
+
     private fun getOrSpawnPlayerEntity(playerId: Int): EntityPlayer {
         return getPlayer(playerId) ?: spawnNewPlayer(playerId) ?: throw Exception("No spawn locations available")
     }
@@ -259,7 +273,11 @@ class World {
         val (x, y) = player.location.coords
         val newX = x + (action.dx * player.speed)
         val newY = y + (action.dy * player.speed)
-        moveEntity(player, player.location.copy(coords = Coords(newX, newY)))
+        if(player.isEditing){
+            player.location = player.location.copy(coords = Coords(newX, newY))
+        }else{
+            moveEntity(player, player.location.copy(coords = Coords(newX, newY)))
+        }
         setEntity(player)
     }
 
@@ -298,7 +316,7 @@ class World {
             from = Coords((toX.toInt() - 1).toFloat(), (toY.toInt() - 1).toFloat()),
             to = Coords((toX.toInt() + 2).toFloat(), (toY.toInt() + 2).toFloat()),
             map = to.map
-        ).filter { it.id != entity.id }//entities in 3x3 centered on entity
+        ).filter { it.id != entity.id && (it !is EntityPlayer || !it.isEditing) }//entities in 3x3 centered on entity
         val (minX, maxX) = entity.getDomain()
         val newDomain = entity.getDomainAt(to.coords)
         val (newMinX, newMaxX) = newDomain
@@ -384,6 +402,9 @@ class World {
 
     private fun sendMessage(playerId: Int, action: Action.SendMessage){
         val player = getPlayer(playerId) ?: return
+        if (player.isEditing) {
+            return
+        }
         if(player.state is EntityPlayer.State.TALKING){
             val conversation = (player.state as EntityPlayer.State.TALKING).conversation
             conversation.addMessage(Message(
@@ -441,6 +462,9 @@ class World {
 
     private fun interactBy(playerId: Int){
         val player = getPlayer(playerId) ?: return
+        if(player.isEditing){
+            return
+        }
         val entity = getFacingEntity(player)
         if(entity != null){
             println("Interacting with $entity")
