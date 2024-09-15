@@ -42,6 +42,8 @@ class World {
     private var displaySize = Pair(0, 0)
     fun getDisplaySize() = displaySize
 
+    fun getMaps() = maps.values.toList().map { it.file }
+
     private val clientStates = arrayListOf<MutableStateFlow<GameState>>()
     private val pendingActions = hashMapOf<Int, ArrayList<Action>>()
 
@@ -148,6 +150,7 @@ class World {
             Action.CloseConversation -> closeConversation(playerId)
             is Action.SendMessage -> sendMessage(playerId, action)
             is Action.EditTile -> editTile(playerId, action.x, action.y, action.tile)
+            is Action.GoToMap -> goToMap(playerId, action.file)
         }
     }
 
@@ -266,6 +269,13 @@ class World {
             }
         }
         return player
+    }
+
+    private fun goToMap(playerId: Int, fileName: String){
+        val player = getPlayer(playerId) ?: return
+        removeEntity(player)
+        player.location = player.location.copy(map = fileName)
+        setEntity(player)
     }
 
     private fun movePlayer(id: Int, action: Action.MovePlayer) {

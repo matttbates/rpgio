@@ -1,7 +1,5 @@
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.Interaction
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -9,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.runtime.*
@@ -23,19 +22,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.*
-import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerInputScope
-import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import entities.Entity
 import entities.EntityPlayer
 import kotlinx.coroutines.flow.Flow
-import org.jetbrains.skia.impl.Log
 import tiles.Tile
 
 class GameClient(
@@ -131,7 +126,10 @@ class GameClient(
         val gameState by gameState?.collectAsState(GameState())?:return
         val keysDown = remember { mutableStateOf<MutableSet<Key>>(HashSet()) }
         val requester = remember { FocusRequester() }
+        var showMapDropdown by remember { mutableStateOf(false) }
+        var showTileSelection by remember { mutableStateOf(false) }
         val player = (gameState.entities.find { it is EntityPlayer && it.id == gameState.playerId } as EntityPlayer?)?:return
+        val maps = world.getMaps()
 
         Board(
             modifier = Modifier
@@ -195,49 +193,118 @@ class GameClient(
             requester.requestFocus()
         }
 
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .height((CELL_SIZE * 2).dp)
-                    .background(color = Color.Black.copy(alpha = 0.5f))
+                    .background(color = Color.Black.copy(alpha = 0.5f)),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    items(Tile.values()){ tile ->
-                        Box {
-                            Image(
-                                painter = getPainter("tiles/tile_${tile.sprite}.png"),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .padding(horizontal = 5.dp)
-                                    .size(CELL_SIZE.dp)
-                                    .border(
-                                        width = 2.dp,
-                                        color = if(tile == selectedEditTile) Color.White else Color.Transparent
-                                    )
-                                    .clickable { selectedEditTile = tile }
+                TileSelection(selectedEditTile){
+                    showTileSelection = true
+                }
+
+                Box(modifier = Modifier
+                    .padding(horizontal = 5.dp)
+                    .fillMaxHeight()
+                    .clickable { showMapDropdown = true }
+                    .weight(1f),
+                    contentAlignment = Alignment.CenterStart
+                ){
+                    Text(
+                        text = gameState.location.map,
+                        color = Color.White,
+                    )
+                }
+                DropdownMenu(
+                    expanded = showMapDropdown,
+                    onDismissRequest = {
+                        showMapDropdown = false
+                        requester.requestFocus()
+                    }
+                ){
+                    maps.forEach { map ->
+                        DropdownMenuItem(onClick = {
+                            world.enqueueAction(
+                                playerId = gameState.playerId,
+                                action = Action.GoToMap(map)
                             )
-                            if(tile.isSolid){
-                                Icon(
-                                    modifier = Modifier
-                                        .padding(horizontal = 2.dp)
-                                        .size((CELL_SIZE / 4).dp),
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = null,
-                                    tint = Color.Red
-                                )
-                            }
+                            showMapDropdown = false
+                            requester.requestFocus()
+                        }) {
+                            Text(map)
                         }
                     }
                 }
+                Icon(modifier = Modifier
+                    .padding(5.dp)
+                    .clickable {
+                        world.disconnect(gameState.playerId)
+                        onExit()
+                    },
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+            ){
+                DropdownMenu(
+                    expanded = showTileSelection,
+                    onDismissRequest = {
+                        showTileSelection = false
+                        requester.requestFocus()
+                    }
+                ){
+                    Tile.values().forEach { tile ->
+                        DropdownMenuItem(onClick = {
+                            selectedEditTile = tile
+                            showTileSelection = false
+                            requester.requestFocus()
+                        }) {
+                            TileSelection(tile)
+                            Text(tile.name)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun TileSelection(
+        tile: Tile,
+        onClick: (() -> Unit)? = null
+    ){
+        Box(
+            modifier = Modifier
+                .clickable(
+                    onClick = onClick?:{},
+                    enabled = onClick != null
+                )
+        ) {
+            Image(
+                painter = getPainter("tiles/tile_${tile.sprite}.png"),
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(horizontal = 5.dp)
+                    .size(CELL_SIZE.dp)
+            )
+            if(tile.isSolid){
+                Icon(
+                    modifier = Modifier
+                        .padding(horizontal = 2.dp)
+                        .size((CELL_SIZE / 4).dp),
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = Color.Red
+                )
             }
         }
     }
@@ -251,7 +318,6 @@ class GameClient(
         val keysDown = remember { mutableStateOf<MutableSet<Key>>(HashSet()) }
         val requester = remember { FocusRequester() }
         var showMenu by remember { mutableStateOf(false) }
-        var disconnecting by remember { mutableStateOf(false) }
         val player = gameState.entities.find { it is EntityPlayer && it.id == gameState.playerId } as EntityPlayer?
 
         if (player != null){
@@ -383,7 +449,6 @@ class GameClient(
                     gameState = gameState,
                     onDisconnect = {
                         world.disconnect(gameState.playerId)
-                        disconnecting = true
                         onDisconnect()
                     }
                 )
