@@ -24,6 +24,9 @@ class RpgIoTime {
     fun getTick(): Int{
         return tick
     }
+    fun setTick(tick: Int){
+        this.tick = tick
+    }
     fun getPercentOfDay(): Double{
         return tick % TICKS_PER_DAY / TICKS_PER_DAY.toFloat()
     }

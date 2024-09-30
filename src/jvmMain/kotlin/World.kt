@@ -48,6 +48,7 @@ class World {
 
 
     init {
+        //load maps
         val mapsJsonString = fileIO.readTextFile("src/jvmMain/resources/maps/maps.json")
         val mapsJson = Json.decodeFromString<MapsJson>(mapsJsonString)
         mapsJson.maps.forEach { mapData ->
@@ -98,7 +99,12 @@ class World {
                 }
             }
         }
-        val playersJsonString = fileIO.readTextFile("src/jvmMain/resources/players/players.json")
+        //load world
+        val worldJsonString = fileIO.readTextFile("src/jvmMain/resources/world/world.json")
+        val worldJson = Json.decodeFromString<WorldJson>(worldJsonString)
+        worldJson.tick?.let { time.setTick(it) }
+        //load players
+        val playersJsonString = fileIO.readTextFile("src/jvmMain/resources/world/players.json")
         val playersJson = Json.decodeFromString<PlayersJson>(playersJsonString)
         playersJson.players.forEach { player ->
             setEntity(player)
@@ -145,13 +151,20 @@ class World {
         }
     }
 
-    fun stop() {
+    fun save() {
         savePlayerData()
+        saveWorldData()
     }
 
     private fun savePlayerData(){
-        fileIO.writeTextFile("src/jvmMain/resources/players/players.json", Json.encodeToString(PlayersJson(
+        fileIO.writeTextFile("src/jvmMain/resources/world/players.json", Json.encodeToString(PlayersJson(
             players = maps.values.flatMap { it.entityMaps.values }.flatten().filterIsInstance<EntityPlayer>()
+        )))
+    }
+
+    private fun saveWorldData(){
+        fileIO.writeTextFile("src/jvmMain/resources/world/world.json", Json.encodeToString(WorldJson(
+            tick = time.getTick()
         )))
     }
 

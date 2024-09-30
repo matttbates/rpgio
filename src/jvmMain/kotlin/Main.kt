@@ -28,7 +28,7 @@ fun main() = application {
     val mysteryWidth = 12.dp
     Window(
         onCloseRequest = {
-            world.stop()
+            world.save()
             exitApplication()
         },
         state = WindowState(

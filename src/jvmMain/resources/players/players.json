@@ -1,1 +1,0 @@
-{"players":[{"id":0,"location":{"coords":{"x":-0.40000123,"y":-0.59999996},"map":"src/jvmMain/resources/maps/0.json"},"facing":"RIGHT","animI":4},{"id":1,"location":{"coords":{"x":-2.0000014,"y":0.0},"map":"src/jvmMain/resources/maps/0.json"},"facing":"RIGHT","animI":3},{"id":-1,"speed":0.5,"location":{"coords":{"x":-10.0,"y":5.0},"map":"src/jvmMain/resources/maps/0.json"}}]}
