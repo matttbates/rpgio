@@ -3,8 +3,10 @@ package entities
 import Facing
 import HitBox
 import Location
+import kotlinx.serialization.Serializable
 import java.util.UUID
 
+@Serializable
 data class EntityDoor(
     override var location: Location,
     val destination: Location,

@@ -4,8 +4,10 @@ import Coords
 import Facing
 import HitBox
 import Location
+import kotlinx.serialization.Serializable
 
-interface Entity {
+@Serializable
+sealed interface Entity {
     val id: Int
     var location: Location
     var facing: Facing

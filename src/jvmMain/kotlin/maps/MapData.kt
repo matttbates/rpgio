@@ -14,7 +14,6 @@ data class MapData(
     val file: String,
     val lightMode: LightMode = LightMode.LIGHT,
     val defaultTile: Tile = Tile.Wall,
-    val portals: List<Portal> = emptyList()
 ){
     private var _rawMap: RawMapJson? = null
     fun setRawMap(rawMap: RawMapJson?){
@@ -22,15 +21,6 @@ data class MapData(
     }
     val rawMap get() = _rawMap
     val tilesMaps = hashMapOf<Pair<Int, Int>, HashMap<Pair<Int, Int>, Tile>>()
-    val entityMaps = hashMapOf<Pair<Int, Int>, ArrayList<Entity>>().apply {
-        portals.forEach {
-            val x = it.x
-            val y = it.y
-            getOrPut(World.getChunkCoords(x.toFloat(), y.toFloat())){ arrayListOf() }.add(EntityDoor(
-                location = Location(Coords(it.x.toFloat(), it.y.toFloat()), file),
-                destination = Location(Coords(it.toX.toFloat(), it.toY.toFloat()), it.toMap?:file),
-            ))
-        }
-    }
+    val entityMaps = hashMapOf<Pair<Int, Int>, ArrayList<Entity>>()
     val spawnLocations = arrayListOf<Location>()
 }

@@ -4,24 +4,13 @@
       "name": "World",
       "file": "src/jvmMain/resources/maps/0.json",
       "lightMode": "NATURAL",
-      "defaultTile": "Water",
-      "portals": [
-        {
-          "x": -1,
-          "y": -2,
-          "toX": -1,
-          "toY": -1
-        }
-      ]
+      "defaultTile": "Water"
     },
     {
       "name": "1",
       "file": "src/jvmMain/resources/maps/1.json",
       "lightMode": "NATURAL",
-      "defaultTile": "Wall",
-      "portals": [
-
-      ]
+      "defaultTile": "Wall"
     }
   ]
 }

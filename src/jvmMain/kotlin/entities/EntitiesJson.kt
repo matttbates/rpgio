@@ -3,6 +3,6 @@ package entities
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class PlayersJson(
-    val players: List<EntityPlayer>
+data class EntitiesJson(
+    val entities: List<Entity> = listOf(),
 )

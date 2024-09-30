@@ -1,10 +1,7 @@
 import RpgIoTime.Companion.TPS
 import chat.ChatManager
 import chat.Message
-import entities.Entity
-import entities.EntityDoor
-import entities.EntityPlayer
-import entities.PlayersJson
+import entities.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -106,11 +103,11 @@ class World {
         val worldJsonString = fileIO.readTextFile("src/jvmMain/resources/world/world.json")
         val worldJson = Json.decodeFromString<WorldJson>(worldJsonString)
         worldJson.tick?.let { time.setTick(it) }
-        //load players
-        val playersJsonString = fileIO.readTextFile("src/jvmMain/resources/world/players.json")
-        val playersJson = Json.decodeFromString<PlayersJson>(playersJsonString)
-        playersJson.players.forEach { player ->
-            setEntity(player)
+        //load entities
+        val entitiesJsonString = fileIO.readTextFile("src/jvmMain/resources/world/entities.json")
+        val entitiesJson = Json.decodeFromString<EntitiesJson>(entitiesJsonString)
+        entitiesJson.entities.forEach { entity ->
+            setEntity(entity)
         }
     }
 
@@ -155,13 +152,13 @@ class World {
     }
 
     fun save() {
-        savePlayerData()
+        saveEntityData()
         saveWorldData()
     }
 
-    private fun savePlayerData(){
-        fileIO.writeTextFile("src/jvmMain/resources/world/players.json", json.encodeToString(PlayersJson(
-            players = maps.values.flatMap { it.entityMaps.values }.flatten().filterIsInstance<EntityPlayer>()
+    private fun saveEntityData(){
+        fileIO.writeTextFile("src/jvmMain/resources/world/entities.json", json.encodeToString(EntitiesJson(
+            entities = maps.values.flatMap { it.entityMaps.values }.flatten()
         )))
     }
 
