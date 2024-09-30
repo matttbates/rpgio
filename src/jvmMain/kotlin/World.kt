@@ -36,6 +36,9 @@ class World {
     private val time = RpgIoTime()
     private val light = Light(time)
     private val chatManager = ChatManager()
+    private val json = Json{
+        prettyPrint = true
+    }
 
     private var displaySize = Pair(0, 0)
     fun getDisplaySize() = displaySize
@@ -157,13 +160,13 @@ class World {
     }
 
     private fun savePlayerData(){
-        fileIO.writeTextFile("src/jvmMain/resources/world/players.json", Json.encodeToString(PlayersJson(
+        fileIO.writeTextFile("src/jvmMain/resources/world/players.json", json.encodeToString(PlayersJson(
             players = maps.values.flatMap { it.entityMaps.values }.flatten().filterIsInstance<EntityPlayer>()
         )))
     }
 
     private fun saveWorldData(){
-        fileIO.writeTextFile("src/jvmMain/resources/world/world.json", Json.encodeToString(WorldJson(
+        fileIO.writeTextFile("src/jvmMain/resources/world/world.json", json.encodeToString(WorldJson(
             tick = time.getTick()
         )))
     }
