@@ -2,6 +2,19 @@
     "entities": [
         {
             "type": "common.entities.EntityPlayer",
+            "id": 0,
+            "location": {
+                "coords": {
+                    "x": -0.8000007,
+                    "y": 0.20000015
+                },
+                "map": "src/jvmMain/resources/maps/0.json"
+            },
+            "facing": "LEFT",
+            "animI": 6
+        },
+        {
+            "type": "common.entities.EntityPlayer",
             "id": -1,
             "speed": 0.5,
             "location": {
@@ -13,17 +26,18 @@
             }
         },
         {
-            "type": "common.entities.EntityPlayer",
-            "id": 0,
+            "type": "common.entities.EntityWanderer",
+            "id": 1,
             "location": {
                 "coords": {
-                    "x": -1.8,
-                    "y": -0.39999986
+                    "x": -1.4000032,
+                    "y": 0.15000015
                 },
                 "map": "src/jvmMain/resources/maps/0.json"
             },
             "facing": "RIGHT",
-            "animI": 0
+            "animI": 5,
+            "targetId": 0
         },
         {
             "type": "common.entities.EntityDoor",
@@ -42,19 +56,6 @@
                 "map": "src/jvmMain/resources/maps/0.json"
             },
             "id": -2110711142
-        },
-        {
-            "type": "common.entities.EntityWanderer",
-            "id": 1,
-            "location": {
-                "coords": {
-                    "x": -2.0000005,
-                    "y": -5.599999
-                },
-                "map": "src/jvmMain/resources/maps/0.json"
-            },
-            "facing": "RIGHT",
-            "animI": 5
         }
     ]
 }

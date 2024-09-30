@@ -1,20 +1,18 @@
 package common.entities
 
-import common.Action
-import common.Facing
-import common.HitBox
-import common.Location
+import common.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import server.World
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @Serializable
 class EntityWanderer(
     override val id: Int,
-    override var speed: Float = 0.2f,
+    override var speed: Float = 0.1f,
     override var location: Location,
     override var facing: Facing = Facing.DOWN,
     override var chatState: Chatter.State = Chatter.State.IDLE
@@ -37,20 +35,59 @@ class EntityWanderer(
     )
 
     fun runAI(world: World){
+        var gameState: GameState? = null
         CoroutineScope(Dispatchers.IO).launch {
-            val stateFlow = world.connectAI(id)
+            world.connectAI(id).collect {
+                gameState = it
+            }
+        }
+        CoroutineScope(Dispatchers.IO).launch {
             while (true){
-                val dx = Math.random().times(2).roundToInt() - 1
-                val dy = Math.random().times(2).roundToInt() - 1
-                //println("Wanderer $id moving $dx $dy")
-                world.enqueueAction(
-                    playerId = id,
-                    Action.MoveEntity(
-                        dx = dx,
-                        dy = dy
-                    )
-                )
-                Thread.sleep(100)
+                gameState?.let { state ->
+                    move(world, state)
+                }
+                Thread.sleep(50)
+            }
+        }
+    }
+
+    private var targetId: Int? = null
+
+    private fun move(world: World, gameState: GameState){
+        if(targetId != null){
+            targetId?.let {
+                gameState.entities.firstOrNull { e -> e.id == it }?.let {entity ->
+                    val distX = (entity.location.coords.x - location.coords.x).roundToInt()
+                    val distY = (entity.location.coords.y - location.coords.y).roundToInt()
+                    if (distX == 0 && distY == 0){
+                        targetId = null
+                    } else {
+                        val dx = if (distX > 0) 1 else if (distX < 0) -1 else 0
+                        val dy = if (distY > 0) 1 else if (distY < 0) -1 else 0
+                        if(dx != 0){
+                            world.enqueueAction(
+                                playerId = id,
+                                Action.MoveEntity(
+                                    dx = dx,
+                                    dy = 0
+                                )
+                            )
+                        }
+                        if(dy != 0){
+                            world.enqueueAction(
+                                playerId = id,
+                                Action.MoveEntity(
+                                    dx = 0,
+                                    dy = dy
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }else{
+            gameState.entities.filterIsInstance<EntityPlayer>().firstOrNull()?.let {
+                targetId = it.id
             }
         }
     }

@@ -135,7 +135,7 @@ class World {
                     //get player
                     val entityId = it.value.entityId
                     //perform actions
-                    val actions = pendingActions[entityId] ?: arrayListOf()
+                    val actions = ArrayList(pendingActions[entityId] ?: arrayListOf())
                     pendingActions[entityId] = arrayListOf()
                     actions.forEach { action ->
                         performAction(entityId, action)
