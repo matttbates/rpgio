@@ -2,42 +2,59 @@
     "entities": [
         {
             "type": "common.entities.EntityPlayer",
-            "id": 0,
-            "location": {
-                "coords": {
-                    "x": -0.8000007,
-                    "y": 0.20000015
-                },
-                "map": "src/jvmMain/resources/maps/0.json"
-            },
-            "facing": "LEFT",
-            "animI": 6
-        },
-        {
-            "type": "common.entities.EntityPlayer",
             "id": -1,
             "speed": 0.5,
             "location": {
                 "coords": {
-                    "x": -10.0,
-                    "y": 5.0
+                    "x": -7.5,
+                    "y": -0.5
                 },
-                "map": "src/jvmMain/resources/maps/0.json"
-            }
+                "map": "src/jvmMain/resources/maps/1.json"
+            },
+            "facing": "LEFT"
         },
         {
-            "type": "common.entities.EntityWanderer",
-            "id": 1,
+            "type": "common.entities.EntityDoor",
             "location": {
                 "coords": {
-                    "x": -1.4000032,
-                    "y": 0.15000015
+                    "x": -6.0,
+                    "y": 3.0
+                },
+                "map": "src/jvmMain/resources/maps/1.json"
+            },
+            "destination": {
+                "coords": {
+                    "x": -1.0,
+                    "y": -1.0
                 },
                 "map": "src/jvmMain/resources/maps/0.json"
             },
-            "facing": "RIGHT",
-            "animI": 5,
-            "targetId": 0
+            "id": -2110711142
+        },
+        {
+            "type": "common.entities.EntityPlayer",
+            "id": 0,
+            "location": {
+                "coords": {
+                    "x": -6.0,
+                    "y": 2.0
+                },
+                "map": "src/jvmMain/resources/maps/1.json"
+            },
+            "animI": 6
+        },
+        {
+            "type": "common.entities.EntityPlayer",
+            "id": 2,
+            "location": {
+                "coords": {
+                    "x": -3.8000019,
+                    "y": 0.19999997
+                },
+                "map": "src/jvmMain/resources/maps/0.json"
+            },
+            "facing": "LEFT",
+            "animI": 5
         },
         {
             "type": "common.entities.EntityDoor",
@@ -50,12 +67,24 @@
             },
             "destination": {
                 "coords": {
-                    "x": -1.0,
-                    "y": -1.0
+                    "x": -6.0,
+                    "y": 2.0
+                },
+                "map": "src/jvmMain/resources/maps/1.json"
+            },
+            "id": -2110711142
+        },
+        {
+            "type": "common.entities.EntityWanderer",
+            "id": 1,
+            "location": {
+                "coords": {
+                    "x": -1.3000032,
+                    "y": -1.1500002
                 },
                 "map": "src/jvmMain/resources/maps/0.json"
             },
-            "id": -2110711142
+            "animI": 0
         }
     ]
 }
