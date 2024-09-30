@@ -1,5 +1,8 @@
 package chat
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Message(
     val senderId: Int,
     val message: String,

@@ -1,6 +1,4 @@
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.toAwtImage
-import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.res.loadImageBitmap
 import java.io.File
 import java.nio.file.Files
@@ -8,16 +6,23 @@ import java.nio.file.Paths
 
 class FileIO {
 
-    fun readTextFile(fileName: String): String {
+    fun readTextFile(fileName: String): String? {
         val projectDirAbsolutePath = Paths.get("").toAbsolutePath().toString()
         val resourcesPath = Paths.get(projectDirAbsolutePath, fileName)
-        return Files.readString(resourcesPath)
+        return try{
+            Files.readString(resourcesPath)
+        }catch (e: Exception){
+            null
+        }
     }
 
     fun writeTextFile(fileName: String, content: String) {
         val projectDirAbsolutePath = Paths.get("").toAbsolutePath().toString()
-        val resourcesPath = Paths.get(projectDirAbsolutePath, fileName)
-        Files.write(resourcesPath, content.toByteArray())
+        val path = Paths.get(projectDirAbsolutePath, fileName)
+        if(!Files.exists(path)){
+            Files.createFile(path)
+        }
+        Files.write(path, content.toByteArray())
     }
 
     fun createBitmapFromFile(filepath: String): ImageBitmap? {

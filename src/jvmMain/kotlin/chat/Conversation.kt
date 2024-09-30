@@ -1,5 +1,8 @@
 package chat
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Conversation(
     val participants: List<Int>,
     val messages: ArrayList<Message>,

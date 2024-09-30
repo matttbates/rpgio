@@ -32,7 +32,7 @@ class World {
     private val fileIO = FileIO()
     private val time = RpgIoTime()
     private val light = Light(time)
-    private val chatManager = ChatManager()
+    private val chatManager = ChatManager(fileIO)
     private val json = Json{
         prettyPrint = true
     }
@@ -49,65 +49,71 @@ class World {
 
     init {
         //load maps
-        val mapsJsonString = fileIO.readTextFile("src/jvmMain/resources/maps/maps.json")
-        val mapsJson = Json.decodeFromString<MapsJson>(mapsJsonString)
-        mapsJson.maps.forEach { mapData ->
-            mapData.setRawMap(Json.decodeFromString(fileIO.readTextFile(mapData.file)))
-            maps[mapData.file] = mapData
-        }
-        maps.values.forEach { mapData ->
-            mapData.rawMap?.let { rawMap ->
-                rawMap.se.forEachIndexed { y, row ->
-                    row.forEachIndexed { x, pixel ->
-                        Tile.getById(pixel)?.let { tile ->
-                            setTile(Location(
-                                coords = Coords(x.toFloat(), y.toFloat()),
-                                map = mapData.file
-                            ), tile)
+        fileIO.readTextFile("src/jvmMain/resources/maps/maps.json")?.let { mapsJsonString ->
+            val mapsJson = Json.decodeFromString<MapsJson>(mapsJsonString)
+            mapsJson.maps.forEach { mapData ->
+                fileIO.readTextFile(mapData.file)?.let { rawMapString ->
+                    mapData.setRawMap(Json.decodeFromString(rawMapString))
+                }
+                maps[mapData.file] = mapData
+            }
+            maps.values.forEach { mapData ->
+                mapData.rawMap?.let { rawMap ->
+                    rawMap.se.forEachIndexed { y, row ->
+                        row.forEachIndexed { x, pixel ->
+                            Tile.getById(pixel)?.let { tile ->
+                                setTile(Location(
+                                    coords = Coords(x.toFloat(), y.toFloat()),
+                                    map = mapData.file
+                                ), tile)
+                            }
                         }
                     }
-                }
-                rawMap.nw.forEachIndexed { y, row ->
-                    row.forEachIndexed { x, pixel ->
-                        Tile.getById(pixel)?.let { tile ->
-                            setTile(Location(
-                                coords = Coords(-x.inc().toFloat(), -y.inc().toFloat()),
-                                map = mapData.file
-                            ), tile)
+                    rawMap.nw.forEachIndexed { y, row ->
+                        row.forEachIndexed { x, pixel ->
+                            Tile.getById(pixel)?.let { tile ->
+                                setTile(Location(
+                                    coords = Coords(-x.inc().toFloat(), -y.inc().toFloat()),
+                                    map = mapData.file
+                                ), tile)
+                            }
                         }
                     }
-                }
-                rawMap.ne.forEachIndexed { y, row ->
-                    row.forEachIndexed { x, pixel ->
-                        Tile.getById(pixel)?.let { tile ->
-                            setTile(Location(
-                                coords = Coords(x.toFloat(), -y.inc().toFloat()),
-                                map = mapData.file
-                            ), tile)
+                    rawMap.ne.forEachIndexed { y, row ->
+                        row.forEachIndexed { x, pixel ->
+                            Tile.getById(pixel)?.let { tile ->
+                                setTile(Location(
+                                    coords = Coords(x.toFloat(), -y.inc().toFloat()),
+                                    map = mapData.file
+                                ), tile)
+                            }
                         }
                     }
-                }
-                rawMap.sw.forEachIndexed { y, row ->
-                    row.forEachIndexed { x, pixel ->
-                        Tile.getById(pixel)?.let { tile ->
-                            setTile(Location(
-                                coords = Coords(-x.inc().toFloat(), y.toFloat()),
-                                map = mapData.file
-                            ), tile)
+                    rawMap.sw.forEachIndexed { y, row ->
+                        row.forEachIndexed { x, pixel ->
+                            Tile.getById(pixel)?.let { tile ->
+                                setTile(Location(
+                                    coords = Coords(-x.inc().toFloat(), y.toFloat()),
+                                    map = mapData.file
+                                ), tile)
+                            }
                         }
                     }
                 }
             }
         }
+
         //load world
-        val worldJsonString = fileIO.readTextFile("src/jvmMain/resources/world/world.json")
-        val worldJson = Json.decodeFromString<WorldJson>(worldJsonString)
-        worldJson.tick?.let { time.setTick(it) }
+        fileIO.readTextFile("src/jvmMain/resources/world/world.json")?.let { worldJsonString ->
+            val worldJson = Json.decodeFromString<WorldJson>(worldJsonString)
+            worldJson.tick?.let { time.setTick(it) }
+        }
         //load entities
-        val entitiesJsonString = fileIO.readTextFile("src/jvmMain/resources/world/entities.json")
-        val entitiesJson = Json.decodeFromString<EntitiesJson>(entitiesJsonString)
-        entitiesJson.entities.forEach { entity ->
-            setEntity(entity)
+        fileIO.readTextFile("src/jvmMain/resources/world/entities.json")?.let { entitiesJsonString ->
+            val entitiesJson = Json.decodeFromString<EntitiesJson>(entitiesJsonString)
+            entitiesJson.entities.forEach { entity ->
+                setEntity(entity)
+            }
         }
     }
 
@@ -158,7 +164,12 @@ class World {
 
     private fun saveEntityData(){
         fileIO.writeTextFile("src/jvmMain/resources/world/entities.json", json.encodeToString(EntitiesJson(
-            entities = maps.values.flatMap { it.entityMaps.values }.flatten()
+            entities = maps.values.flatMap { it.entityMaps.values }.flatten().map { entity ->
+                when(entity){
+                    is EntityPlayer -> entity.apply { state = EntityPlayer.State.IDLE }
+                    else -> entity
+                }
+            }
         )))
     }
 
@@ -448,6 +459,10 @@ class World {
                 message = action.message,
                 time = time.getTimeStringShort()
             ))
+            chatManager.saveConversation(conversation)
+            val otherId = conversation.participants.find { it != playerId }?:return
+            val otherPlayer = getPlayer(otherId)
+            otherPlayer?.state = EntityPlayer.State.TALKING(conversation)
         }
     }
 

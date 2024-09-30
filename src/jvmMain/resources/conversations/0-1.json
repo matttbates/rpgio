@@ -1,0 +1,23 @@
+{
+    "participants": [
+        0,
+        1
+    ],
+    "messages": [
+        {
+            "senderId": 0,
+            "message": "hi",
+            "time": "1/1/1 10:37 AM"
+        },
+        {
+            "senderId": 1,
+            "message": "hello!",
+            "time": "1/1/1 11:04 AM"
+        },
+        {
+            "senderId": 0,
+            "message": "lunch?",
+            "time": "1/1/1 11:21 AM"
+        }
+    ]
+}
