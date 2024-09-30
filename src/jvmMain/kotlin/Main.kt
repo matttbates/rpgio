@@ -27,7 +27,10 @@ fun main() = application {
     val titleHeight = 35.dp
     val mysteryWidth = 12.dp
     Window(
-        onCloseRequest = ::exitApplication,
+        onCloseRequest = {
+            world.stop()
+            exitApplication()
+        },
         state = WindowState(
             size = DpSize(screenW + mysteryWidth, screenH + titleHeight),
         ),

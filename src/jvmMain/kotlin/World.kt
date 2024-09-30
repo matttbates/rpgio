@@ -4,6 +4,7 @@ import chat.Message
 import entities.Entity
 import entities.EntityDoor
 import entities.EntityPlayer
+import entities.PlayersJson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -47,8 +48,8 @@ class World {
 
 
     init {
-        val jsonString = fileIO.readTextFile("src/jvmMain/resources/maps/maps.json")
-        val mapsJson = Json.decodeFromString<MapsJson>(jsonString)
+        val mapsJsonString = fileIO.readTextFile("src/jvmMain/resources/maps/maps.json")
+        val mapsJson = Json.decodeFromString<MapsJson>(mapsJsonString)
         mapsJson.maps.forEach { mapData ->
             mapData.setRawMap(Json.decodeFromString(fileIO.readTextFile(mapData.file)))
             maps[mapData.file] = mapData
@@ -97,6 +98,11 @@ class World {
                 }
             }
         }
+        val playersJsonString = fileIO.readTextFile("src/jvmMain/resources/players/players.json")
+        val playersJson = Json.decodeFromString<PlayersJson>(playersJsonString)
+        playersJson.players.forEach { player ->
+            setEntity(player)
+        }
     }
 
     fun start(
@@ -137,6 +143,16 @@ class World {
                 Thread.sleep(sleepMillis.toLong())
             }
         }
+    }
+
+    fun stop() {
+        savePlayerData()
+    }
+
+    private fun savePlayerData(){
+        fileIO.writeTextFile("src/jvmMain/resources/players/players.json", Json.encodeToString(PlayersJson(
+            players = maps.values.flatMap { it.entityMaps.values }.flatten().filterIsInstance<EntityPlayer>()
+        )))
     }
 
     private fun performAction(playerId: Int, action: Action){

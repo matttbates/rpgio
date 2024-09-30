@@ -4,7 +4,9 @@ import Facing
 import HitBox
 import Location
 import chat.Conversation
+import kotlinx.serialization.Serializable
 
+@Serializable
 class EntityPlayer(
     override val id: Int,
     var speed: Float = 0.2f,
@@ -29,6 +31,7 @@ class EntityPlayer(
         fromRight = 0.2f,
         fromBottom = 0.1f
     )
+    @Serializable
     sealed class State{
         object IDLE: State()
         data class TALKING(val conversation: Conversation): State()
