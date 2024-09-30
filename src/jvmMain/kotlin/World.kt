@@ -511,6 +511,10 @@ class World {
         fileIO.writeTextFile(mapData.file, Json.encodeToString(mapData.rawMap))
     }
 
+    fun isPlayerOnline(playerId: Int): Boolean {
+        return clientStates.any { it.value.playerId == playerId }
+    }
+
     private fun interactBy(playerId: Int){
         val player = getPlayer(playerId) ?: return
         if(player.isEditing){

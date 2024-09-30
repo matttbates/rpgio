@@ -547,6 +547,7 @@ class GameClient(
         val conversation = (player.state as EntityPlayer.State.TALKING).conversation
         val otherId = conversation.participants.find { it != gameState.playerId }?:-1
         val other = gameState.entities.find { it.id == otherId }
+        val otherOnline = world.isPlayerOnline(otherId)
         var messageToSend by remember { mutableStateOf("") }
         val requester = remember { FocusRequester() }
         Column(
@@ -554,8 +555,16 @@ class GameClient(
                 .fillMaxHeight()
                 .fillMaxWidth(0.5f)
                 .padding(10.dp)
-                .background(Color.White.copy(alpha = 0.2f))
+                .background(Color.White.copy(alpha = 0.5f))
         ) {
+            if(!otherOnline){
+                Text(modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White.copy(alpha = 0.5f)),
+                    text = "Offline",
+                    textAlign = TextAlign.Center
+                )
+            }
             LazyColumn(modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
