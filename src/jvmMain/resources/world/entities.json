@@ -2,19 +2,6 @@
     "entities": [
         {
             "type": "common.entities.EntityPlayer",
-            "id": 1,
-            "location": {
-                "coords": {
-                    "x": 2.1999989,
-                    "y": 0.6
-                },
-                "map": "src/jvmMain/resources/maps/0.json"
-            },
-            "facing": "RIGHT",
-            "animI": 1
-        },
-        {
-            "type": "common.entities.EntityPlayer",
             "id": -1,
             "speed": 0.5,
             "location": {
@@ -30,11 +17,13 @@
             "id": 0,
             "location": {
                 "coords": {
-                    "x": -1.6000004,
-                    "y": 0.20000003
+                    "x": -1.8,
+                    "y": -0.39999986
                 },
                 "map": "src/jvmMain/resources/maps/0.json"
-            }
+            },
+            "facing": "RIGHT",
+            "animI": 0
         },
         {
             "type": "common.entities.EntityDoor",
@@ -53,6 +42,19 @@
                 "map": "src/jvmMain/resources/maps/0.json"
             },
             "id": -2110711142
+        },
+        {
+            "type": "common.entities.EntityWanderer",
+            "id": 1,
+            "location": {
+                "coords": {
+                    "x": -2.0000005,
+                    "y": -5.599999
+                },
+                "map": "src/jvmMain/resources/maps/0.json"
+            },
+            "facing": "RIGHT",
+            "animI": 5
         }
     ]
 }

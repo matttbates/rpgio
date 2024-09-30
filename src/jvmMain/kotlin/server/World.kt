@@ -116,6 +116,9 @@ class World {
             val entitiesJson = Json.decodeFromString<EntitiesJson>(entitiesJsonString)
             entitiesJson.entities.forEach { entity ->
                 setEntity(entity)
+                if(entity is EntityWanderer){
+                    entity.runAI(this)
+                }
             }
         }
     }
@@ -130,27 +133,27 @@ class World {
             while (true) {
                 clientStates.forEach {
                     //get player
-                    val playerId = it.value.playerId
+                    val entityId = it.value.entityId
                     //perform actions
-                    val actions = pendingActions[playerId] ?: arrayListOf()
-                    pendingActions[playerId] = arrayListOf()
+                    val actions = pendingActions[entityId] ?: arrayListOf()
+                    pendingActions[entityId] = arrayListOf()
                     actions.forEach { action ->
-                        performAction(playerId, action)
+                        performAction(entityId, action)
                     }
                     //update state
-                    val player = getPlayer(playerId) ?: return@forEach
-                    val (x, y) = player.location.coords.let { (x, y) -> Pair(x.toInt().toFloat(), y.toInt().toFloat()) }
+                    val entity = getEntity(entityId) ?: return@forEach
+                    val (x, y) = entity.location.coords.let { (x, y) -> Pair(x.toInt().toFloat(), y.toInt().toFloat()) }
                     val from = Coords(x - rX, y - rY)
                     val to = Coords(x + rX, y + rY)
-                    val tiles = getTopTiles(from, to, player.location.map)
-                    val entities = getEntities(from, to, player.location.map)
+                    val tiles = getTopTiles(from, to, entity.location.map)
+                    val entities = getEntities(from, to, entity.location.map)
                     it.value = GameState(
-                        playerId = playerId,
-                        location = Location(from, player.location.map),
+                        entityId = entityId,
+                        location = Location(from, entity.location.map),
                         tiles = tiles,
                         entities = entities,
                         tick = time.getTick(),
-                        lightLevel = maps[player.location.map]?.let { map ->  light.calculateLightLevel(map) }?:1f,
+                        lightLevel = maps[entity.location.map]?.let { map ->  light.calculateLightLevel(map) }?:1f,
                         time = time.getTimeString(),
                     )
                 }
@@ -169,7 +172,7 @@ class World {
         fileIO.writeTextFile("src/jvmMain/resources/world/entities.json", json.encodeToString(EntitiesJson(
             entities = maps.values.flatMap { it.entityMaps.values }.flatten().map { entity ->
                 when(entity){
-                    is EntityPlayer -> entity.apply { state = EntityPlayer.State.IDLE }
+                    is Chatter -> entity.apply { chatState = Chatter.State.IDLE }
                     else -> entity
                 }
             }
@@ -184,8 +187,7 @@ class World {
 
     private fun performAction(playerId: Int, action: Action){
         when(action){
-            is Action.MovePlayer -> movePlayer(playerId, action)
-            is Action.RotateEntity -> rotateEntity(action)
+            is Action.MoveEntity -> moveEntity(playerId, action)
             Action.Interact -> interactBy(playerId)
             Action.CloseConversation -> closeConversation(playerId)
             is Action.SendMessage -> sendMessage(playerId, action)
@@ -203,7 +205,17 @@ class World {
     fun connect(playerId: Int): Flow<GameState> {
         val player = getOrSpawnPlayerEntity(playerId)//for later use
         val state = MutableStateFlow(GameState(
-            playerId = playerId,
+            entityId = playerId,
+            tiles = listOf(),
+            tick = 0
+        ))
+        clientStates.add(state)
+        return state
+    }
+
+    fun connectAI(entityId: Int): Flow<GameState> {
+        val state = MutableStateFlow(GameState(
+            entityId = entityId,
             tiles = listOf(),
             tick = 0
         ))
@@ -216,7 +228,7 @@ class World {
         val player = getOrSpawnPlayerEntity(playerId)//for later use
         player.speed = 0.5f
         val state = MutableStateFlow(GameState(
-            playerId = playerId,
+            entityId = playerId,
             tiles = listOf(),
             tick = 0
         ))
@@ -229,7 +241,7 @@ class World {
     }
 
     fun disconnect(playerId: Int) {
-        clientStates.removeIf { it.value.playerId == playerId }
+        clientStates.removeIf { it.value.entityId == playerId }
     }
 
     private fun spawnNewPlayer(id: Int): EntityPlayer? {
@@ -299,8 +311,12 @@ class World {
         return maps.values.flatMap { it.entityMaps.values }.flatten().find { it is EntityPlayer && it.id == id } as EntityPlayer?
     }
 
-    private fun popPlayer(id: Int): EntityPlayer? {
-        val player = getPlayer(id)
+    fun getEntity(id: Int): Entity? {
+        return maps.values.flatMap { it.entityMaps.values }.flatten().find { it.id == id }
+    }
+
+    private fun popEntity(id: Int): Entity? {
+        val player = getEntity(id)
         if (player != null) {
             val (x, y) = player.location.coords
             val (chunkX, chunkY) = getChunkCoords(x, y)
@@ -318,23 +334,34 @@ class World {
         setEntity(player)
     }
 
-    private fun movePlayer(id: Int, action: Action.MovePlayer) {
-        val player = popPlayer(id) ?: return
-        val (x, y) = player.location.coords
-        val newX = x + (action.dx * player.speed)
-        val newY = y + (action.dy * player.speed)
-        if(player.isEditing){
-            player.location = player.location.copy(coords = Coords(newX, newY))
-        }else{
-            moveEntity(player, player.location.copy(coords = Coords(newX, newY)))
+    private fun moveEntity(id: Int, action: Action.MoveEntity) {
+        val entity = popEntity(id) ?: return
+        val (x, y) = entity.location.coords
+        if(entity is Walker){
+            val facing = with(action) {
+                when {
+                    dx == 1 && dy == 0 -> Facing.RIGHT
+                    dx == 1 && dy == 1 -> Facing.RIGHT
+                    dx == 0 && dy == 1 -> Facing.DOWN
+                    dx == -1 && dy == 1 -> Facing.LEFT
+                    dx == -1 && dy == 0 -> Facing.LEFT
+                    dx == -1 && dy == -1 -> Facing.LEFT
+                    dx == 0 && dy == -1 -> Facing.UP
+                    dx == 1 && dy == -1 -> Facing.RIGHT
+                    else -> null
+                }
+            }
+            val newX = x + (action.dx * entity.speed)
+            val newY = y + (action.dy * entity.speed)
+            if(entity is EntityPlayer && entity.isEditing){
+                entity.location = entity.location.copy(coords = Coords(newX, newY))
+                entity.facing = facing?:entity.facing
+            }else{
+                moveEntity(entity, entity.location.copy(coords = Coords(newX, newY)))
+                entity.facing = facing?:entity.facing
+            }
+            setEntity(entity)
         }
-        setEntity(player)
-    }
-
-    private fun rotateEntity(action: Action.RotateEntity){
-        val (x, y) = action.location.coords
-        val chunk = getChunkCoords(x, y)
-        maps[action.location.map]?.entityMaps?.get(chunk)?.find { it.id == action.id }?.facing = action.facing
     }
 
     private fun moveEntity(entity: Entity, to: Location): Boolean {
@@ -442,12 +469,12 @@ class World {
 
     private fun closeConversation(playerId: Int){
         val player = getPlayer(playerId) ?: return
-        val otherId = (player.state as? EntityPlayer.State.TALKING)?.conversation?.participants?.find { it != playerId }
+        val otherId = (player.chatState as? Chatter.State.TALKING)?.conversation?.participants?.find { it != playerId }
         otherId?.let {
             val entity = getPlayer(it)
-            entity?.state = EntityPlayer.State.IDLE
+            entity?.chatState = Chatter.State.IDLE
         }
-        player.state = EntityPlayer.State.IDLE
+        player.chatState = Chatter.State.IDLE
     }
 
     private fun sendMessage(playerId: Int, action: Action.SendMessage){
@@ -455,8 +482,8 @@ class World {
         if (player.isEditing) {
             return
         }
-        if(player.state is EntityPlayer.State.TALKING){
-            val conversation = (player.state as EntityPlayer.State.TALKING).conversation
+        if(player.chatState is Chatter.State.TALKING){
+            val conversation = (player.chatState as Chatter.State.TALKING).conversation
             conversation.addMessage(Message(
                 senderId = playerId,
                 message = action.message,
@@ -465,7 +492,7 @@ class World {
             chatManager.saveConversation(conversation)
             val otherId = conversation.participants.find { it != playerId }?:return
             val otherPlayer = getPlayer(otherId)
-            otherPlayer?.state = EntityPlayer.State.TALKING(conversation)
+            otherPlayer?.chatState = Chatter.State.TALKING(conversation)
         }
     }
 
@@ -515,7 +542,7 @@ class World {
     }
 
     fun isPlayerOnline(playerId: Int): Boolean {
-        return clientStates.any { it.value.playerId == playerId }
+        return clientStates.any { it.value.entityId == playerId }
     }
 
     private fun interactBy(playerId: Int){
@@ -527,11 +554,11 @@ class World {
         if(entity != null){
             println("Interacting with $entity")
             when(entity){
-                is EntityPlayer -> {
-                    if(entity.state is EntityPlayer.State.IDLE){
+                is Chatter -> {
+                    if(entity.chatState is Chatter.State.IDLE){
                         val conversation = chatManager.getConversationByIds(playerId, entity.id)
-                        player.state = EntityPlayer.State.TALKING(conversation)
-                        entity.state = EntityPlayer.State.TALKING(conversation)
+                        player.chatState = Chatter.State.TALKING(conversation)
+                        entity.chatState = Chatter.State.TALKING(conversation)
                     }
                 }
                 is EntityDoor -> {
@@ -539,6 +566,7 @@ class World {
                     moveEntity(player, entity.destination)
                     setEntity(player)
                 }
+                else -> {}
             }
             return
         }

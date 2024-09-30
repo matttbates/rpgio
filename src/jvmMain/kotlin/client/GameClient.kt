@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import common.Action
 import common.Facing
+import common.entities.Chatter
 import common.entities.Entity
 import common.entities.EntityPlayer
 import kotlinx.coroutines.flow.Flow
@@ -133,7 +134,7 @@ class GameClient(
         val requester = remember { FocusRequester() }
         var showMapDropdown by remember { mutableStateOf(false) }
         var showTileSelection by remember { mutableStateOf(false) }
-        val player = (gameState.entities.find { it is EntityPlayer && it.id == gameState.playerId } as EntityPlayer?)?:return
+        val player = (gameState.entities.find { it is EntityPlayer && it.id == gameState.entityId } as EntityPlayer?)?:return
         val maps = world.getMaps()
 
         Board(
@@ -154,7 +155,7 @@ class GameClient(
                 val x = (offset.x / CELL_SIZE.dp.toPx()).toInt()
                 val y = (offset.y / CELL_SIZE.dp.toPx()).toInt()
                 world.enqueueAction(
-                    playerId = gameState.playerId,
+                    playerId = gameState.entityId,
                     action = Action.EditTile(
                         x = x + gameState.location.coords.x.toInt(),
                         y = y + gameState.location.coords.y.toInt(),
@@ -188,10 +189,10 @@ class GameClient(
             }
         }
         if (dX != 0) {
-            world.enqueueAction(gameState.playerId, Action.MovePlayer(dX, 0))
+            world.enqueueAction(gameState.entityId, Action.MoveEntity(dX, 0))
         }
         if (dY != 0) {
-            world.enqueueAction(gameState.playerId, Action.MovePlayer(0, dY))
+            world.enqueueAction(gameState.entityId, Action.MoveEntity(0, dY))
         }
 
         LaunchedEffect(Unit) {
@@ -235,7 +236,7 @@ class GameClient(
                     maps.forEach { map ->
                         DropdownMenuItem(onClick = {
                             world.enqueueAction(
-                                playerId = gameState.playerId,
+                                playerId = gameState.entityId,
                                 action = Action.GoToMap(map)
                             )
                             showMapDropdown = false
@@ -248,7 +249,7 @@ class GameClient(
                 Icon(modifier = Modifier
                     .padding(5.dp)
                     .clickable {
-                        world.disconnect(gameState.playerId)
+                        world.disconnect(gameState.entityId)
                         onExit()
                     },
                     imageVector = Icons.Default.Close,
@@ -323,7 +324,7 @@ class GameClient(
         val keysDown = remember { mutableStateOf<MutableSet<Key>>(HashSet()) }
         val requester = remember { FocusRequester() }
         var showMenu by remember { mutableStateOf(false) }
-        val player = gameState.entities.find { it is EntityPlayer && it.id == gameState.playerId } as EntityPlayer?
+        val player = gameState.entities.find { it is EntityPlayer && it.id == gameState.entityId } as EntityPlayer?
 
         if (player != null){
             Board(
@@ -333,7 +334,7 @@ class GameClient(
                     .onKeyEvent {
                         when(it.type){
                             KeyEventType.KeyDown -> {
-                                val inChat = player.state is EntityPlayer.State.TALKING
+                                val inChat = player.chatState is Chatter.State.TALKING
                                 if(!inChat){
                                     keysDown.value.add(it.key)
                                 }
@@ -345,13 +346,13 @@ class GameClient(
                                     }
                                     Key.Enter -> {
                                         if(!inChat) {
-                                            world.enqueueAction(playerId = gameState.playerId, action = Action.Interact)
+                                            world.enqueueAction(playerId = gameState.entityId, action = Action.Interact)
                                         }
                                     }
                                     Key.Escape -> {
                                         if(inChat){
                                             world.enqueueAction(
-                                                playerId = gameState.playerId,
+                                                playerId = gameState.entityId,
                                                 action = Action.CloseConversation
                                             )
                                             requester.requestFocus()
@@ -377,7 +378,7 @@ class GameClient(
 
                     //Chat
                     var isChatting by remember { mutableStateOf(false) }
-                    if(player.state is EntityPlayer.State.TALKING){
+                    if(player.chatState is Chatter.State.TALKING){
                         isChatting = true
                         Chat(
                             modifier = Modifier
@@ -423,37 +424,17 @@ class GameClient(
                 }
             }
             if (dX != 0) {
-                world.enqueueAction(gameState.playerId, Action.MovePlayer(dX, 0))
+                world.enqueueAction(gameState.entityId, Action.MoveEntity(dX, 0))
             }
             if (dY != 0) {
-                world.enqueueAction(gameState.playerId, Action.MovePlayer(0, dY))
-            }
-            val facing = when {
-                dX == 1 && dY == 0 -> Facing.RIGHT
-                dX == 1 && dY == 1 -> Facing.RIGHT
-                dX == 0 && dY == 1 -> Facing.DOWN
-                dX == -1 && dY == 1 -> Facing.LEFT
-                dX == -1 && dY == 0 -> Facing.LEFT
-                dX == -1 && dY == -1 -> Facing.LEFT
-                dX == 0 && dY == -1 -> Facing.UP
-                dX == 1 && dY == -1 -> Facing.RIGHT
-                else -> null
-            }
-            facing?.let {
-                world.enqueueAction(
-                    gameState.playerId, Action.RotateEntity(
-                        id = gameState.playerId,
-                        location = player.location,
-                        facing = it
-                    )
-                )
+                world.enqueueAction(gameState.entityId, Action.MoveEntity(0, dY))
             }
 
             if(showMenu){
                 Menu(
                     gameState = gameState,
                     onDisconnect = {
-                        world.disconnect(gameState.playerId)
+                        world.disconnect(gameState.entityId)
                         onDisconnect()
                     }
                 )
@@ -549,8 +530,8 @@ class GameClient(
         player: EntityPlayer,
         gameState: GameState
     ){
-        val conversation = (player.state as EntityPlayer.State.TALKING).conversation
-        val otherId = conversation.participants.find { it != gameState.playerId }?:-1
+        val conversation = (player.chatState as Chatter.State.TALKING).conversation
+        val otherId = conversation.participants.find { it != gameState.entityId }?:-1
         val other = gameState.entities.find { it.id == otherId }
         val otherOnline = world.isPlayerOnline(otherId)
         var messageToSend by remember { mutableStateOf("") }
@@ -579,13 +560,13 @@ class GameClient(
                     Box(modifier = Modifier.fillMaxWidth()){
                         Column(modifier = Modifier
                             .padding(5.dp)
-                            .align(if (message.senderId == gameState.playerId) Alignment.TopEnd else Alignment.TopStart),
-                            horizontalAlignment = if (message.senderId == gameState.playerId) Alignment.End else Alignment.Start
+                            .align(if (message.senderId == gameState.entityId) Alignment.TopEnd else Alignment.TopStart),
+                            horizontalAlignment = if (message.senderId == gameState.entityId) Alignment.End else Alignment.Start
                         ){
                             Text(
                                 text = message.time,
                                 fontSize = 10.sp,
-                                textAlign = if (message.senderId == gameState.playerId) TextAlign.End else TextAlign.Start
+                                textAlign = if (message.senderId == gameState.entityId) TextAlign.End else TextAlign.Start
                             )
                             Text(message.message)
                         }
@@ -603,7 +584,7 @@ class GameClient(
                         modifier = Modifier.clickable(
                             onClick = {
                                 world.enqueueAction(
-                                    playerId = gameState.playerId,
+                                    playerId = gameState.entityId,
                                     action = Action.SendMessage(
                                         message = messageToSend
                                     )
@@ -635,7 +616,7 @@ class GameClient(
                 .background(Color.White.copy(alpha = 0.2f))
         ) {
             Row {
-                Text("Game logged in as player ${gameState.playerId}")
+                Text("Game logged in as player ${gameState.entityId}")
                 Button(
                     onClick = onDisconnect
                 ) {
@@ -769,7 +750,7 @@ class GameClient(
                 .border(1.dp, color = Color.Red)
             )
         }
-        if (entity is EntityPlayer && entity.state is EntityPlayer.State.TALKING) {
+        if (entity is EntityPlayer && entity.chatState is Chatter.State.TALKING) {
             Image(
                 painter = getPainter("interact.png"),
                 contentDescription = null,
