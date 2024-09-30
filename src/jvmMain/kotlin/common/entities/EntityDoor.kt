@@ -1,8 +1,8 @@
-package entities
+package common.entities
 
-import Facing
-import HitBox
-import Location
+import common.Facing
+import common.HitBox
+import common.Location
 import kotlinx.serialization.Serializable
 import java.util.UUID
 

@@ -1,4 +1,6 @@
-import tiles.Tile
+package common
+
+import common.tiles.Tile
 
 sealed class Action {
     data class MovePlayer(val dx: Int, val dy: Int) : Action()

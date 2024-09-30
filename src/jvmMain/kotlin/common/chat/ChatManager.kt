@@ -1,6 +1,6 @@
-package chat
+package common.chat
 
-import FileIO
+import server.FileIO
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 

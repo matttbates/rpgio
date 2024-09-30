@@ -1,12 +1,9 @@
-package maps
+package server.maps
 
-import Coords
-import Location
-import World
-import entities.Entity
-import entities.EntityDoor
+import common.Location
+import common.entities.Entity
 import kotlinx.serialization.Serializable
-import tiles.Tile
+import common.tiles.Tile
 
 @Serializable
 data class MapData(

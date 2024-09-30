@@ -1,9 +1,9 @@
-package entities
+package common.entities
 
-import Facing
-import HitBox
-import Location
-import chat.Conversation
+import common.Facing
+import common.HitBox
+import common.Location
+import common.chat.Conversation
 import kotlinx.serialization.Serializable
 
 @Serializable

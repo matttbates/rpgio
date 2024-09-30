@@ -18,6 +18,16 @@
             "senderId": 0,
             "message": "lunch?",
             "time": "1/1/1 11:21 AM"
+        },
+        {
+            "senderId": 0,
+            "message": "lunch time!",
+            "time": "1/1/1 12:50 PM"
+        },
+        {
+            "senderId": 1,
+            "message": "sorry I'm late..",
+            "time": "1/1/1  1:03 PM"
         }
     ]
 }

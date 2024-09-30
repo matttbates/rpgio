@@ -1,20 +1,20 @@
 {
     "entities": [
         {
-            "type": "entities.EntityPlayer",
+            "type": "common.entities.EntityPlayer",
             "id": 1,
             "location": {
                 "coords": {
-                    "x": -2.0000014,
-                    "y": 0.0
+                    "x": 2.1999989,
+                    "y": 0.6
                 },
                 "map": "src/jvmMain/resources/maps/0.json"
             },
             "facing": "RIGHT",
-            "animI": 3
+            "animI": 1
         },
         {
-            "type": "entities.EntityPlayer",
+            "type": "common.entities.EntityPlayer",
             "id": -1,
             "speed": 0.5,
             "location": {
@@ -26,19 +26,18 @@
             }
         },
         {
-            "type": "entities.EntityPlayer",
+            "type": "common.entities.EntityPlayer",
             "id": 0,
             "location": {
                 "coords": {
-                    "x": -1.4000001,
-                    "y": -2.9802322E-8
+                    "x": -1.6000004,
+                    "y": 0.20000003
                 },
                 "map": "src/jvmMain/resources/maps/0.json"
-            },
-            "facing": "LEFT"
+            }
         },
         {
-            "type": "entities.EntityDoor",
+            "type": "common.entities.EntityDoor",
             "location": {
                 "coords": {
                     "x": -1.0,

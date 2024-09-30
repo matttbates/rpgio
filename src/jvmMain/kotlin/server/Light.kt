@@ -1,5 +1,7 @@
-import maps.LightMode
-import maps.MapData
+package server
+
+import server.maps.LightMode
+import server.maps.MapData
 import kotlin.math.cos
 
 class Light(

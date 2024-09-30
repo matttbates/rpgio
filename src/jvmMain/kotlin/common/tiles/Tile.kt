@@ -1,4 +1,4 @@
-package tiles
+package common.tiles
 
 enum class Tile(
     val sprite: String,

@@ -1,4 +1,4 @@
-package chat
+package common.chat
 
 import kotlinx.serialization.Serializable
 

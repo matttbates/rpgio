@@ -1,6 +1,7 @@
-import chat.Conversation
-import entities.Entity
-import tiles.Tile
+package common
+
+import common.entities.Entity
+import common.tiles.Tile
 
 data class GameState(
     val playerId: Int = -1,

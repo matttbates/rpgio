@@ -1,9 +1,9 @@
-package entities
+package common.entities
 
-import Coords
-import Facing
-import HitBox
-import Location
+import common.Coords
+import common.Facing
+import common.HitBox
+import common.Location
 import kotlinx.serialization.Serializable
 
 @Serializable

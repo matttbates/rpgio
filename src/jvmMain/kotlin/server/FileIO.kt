@@ -1,3 +1,5 @@
+package server
+
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.loadImageBitmap
 import java.io.File
@@ -37,13 +39,13 @@ class FileIO {
 
     fun getAllTiles(): List<String>{
         val projectDirAbsolutePath = Paths.get("").toAbsolutePath().toString()
-        val resourcesPath = Paths.get(projectDirAbsolutePath, "/src/jvmMain/resources/tiles")
+        val resourcesPath = Paths.get(projectDirAbsolutePath, "/src/jvmMain/resources/common.tiles")
         val list = arrayListOf<String>()
         Files.walk(resourcesPath)
             .filter { item -> Files.isRegularFile(item) }
             .filter { item -> item.toString().endsWith(".png") }
             .forEach { item ->
-                list.add("src/jvmMain/resources/tiles/${item.toFile().name}")
+                list.add("src/jvmMain/resources/common.tiles/${item.toFile().name}")
             }
         return list
     }

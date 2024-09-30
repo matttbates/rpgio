@@ -1,3 +1,5 @@
+package common
+
 enum class Facing {
     UP, RIGHT, DOWN, LEFT;
 

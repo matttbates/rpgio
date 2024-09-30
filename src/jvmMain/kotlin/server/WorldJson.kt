@@ -1,3 +1,5 @@
+package server
+
 import kotlinx.serialization.Serializable
 
 @Serializable

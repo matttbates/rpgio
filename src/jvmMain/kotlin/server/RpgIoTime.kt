@@ -1,3 +1,5 @@
+package server
+
 class RpgIoTime {
     companion object{
         const val TPS = 20

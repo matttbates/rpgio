@@ -1,7 +1,10 @@
-import RpgIoTime.Companion.TPS
-import chat.ChatManager
-import chat.Message
-import entities.*
+package server
+
+import server.RpgIoTime.Companion.TPS
+import common.chat.ChatManager
+import common.chat.Message
+import common.*
+import common.entities.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -9,16 +12,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import maps.MapData
-import maps.MapsJson
-import maps.Quadrant
-import tiles.*
+import server.maps.MapData
+import server.maps.MapsJson
+import server.maps.Quadrant
+import common.tiles.*
 import kotlin.math.abs
 
 class World {
 
     companion object {
-        private val maps: MutableMap<String, MapData> = hashMapOf()//"src/jvmMain/resources/maps/map.png" to maps.MapData("src/jvmMain/resources/maps/map.png"))
+        private val maps: MutableMap<String, MapData> = hashMapOf()
         private const val CHUNK_SIZE = 20
 
         private fun checkSign(num: Int) = (num shr 31 or 1)
