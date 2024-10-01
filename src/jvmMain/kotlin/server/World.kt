@@ -137,7 +137,7 @@ class World {
                     //perform actions
                     val actions = ArrayList(pendingActions[entityId] ?: arrayListOf())
                     pendingActions[entityId] = arrayListOf()
-                    actions.forEach { action ->
+                    actions.filterNotNull().forEach { action ->
                         performAction(entityId, action)
                     }
                     //update state

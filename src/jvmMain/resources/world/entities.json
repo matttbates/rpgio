@@ -1,19 +1,6 @@
 {
     "entities": [
         {
-            "type": "common.entities.EntityPlayer",
-            "id": -1,
-            "speed": 0.5,
-            "location": {
-                "coords": {
-                    "x": -7.5,
-                    "y": -0.5
-                },
-                "map": "src/jvmMain/resources/maps/1.json"
-            },
-            "facing": "LEFT"
-        },
-        {
             "type": "common.entities.EntityDoor",
             "location": {
                 "coords": {
@@ -33,15 +20,29 @@
         },
         {
             "type": "common.entities.EntityPlayer",
+            "id": -1,
+            "speed": 0.5,
+            "location": {
+                "coords": {
+                    "x": 0.0,
+                    "y": 1.0
+                },
+                "map": "src/jvmMain/resources/maps/0.json"
+            },
+            "facing": "LEFT"
+        },
+        {
+            "type": "common.entities.EntityPlayer",
             "id": 0,
             "location": {
                 "coords": {
-                    "x": -6.0,
-                    "y": 2.0
+                    "x": -0.20000063,
+                    "y": -0.59999985
                 },
-                "map": "src/jvmMain/resources/maps/1.json"
+                "map": "src/jvmMain/resources/maps/0.json"
             },
-            "animI": 6
+            "facing": "RIGHT",
+            "animI": 1
         },
         {
             "type": "common.entities.EntityPlayer",
@@ -55,6 +56,19 @@
             },
             "facing": "LEFT",
             "animI": 5
+        },
+        {
+            "type": "common.entities.EntityWanderer",
+            "id": 1,
+            "location": {
+                "coords": {
+                    "x": -3.1000023,
+                    "y": 0.14999962
+                },
+                "map": "src/jvmMain/resources/maps/0.json"
+            },
+            "facing": "LEFT",
+            "targetId": 2
         },
         {
             "type": "common.entities.EntityDoor",
@@ -73,18 +87,6 @@
                 "map": "src/jvmMain/resources/maps/1.json"
             },
             "id": -2110711142
-        },
-        {
-            "type": "common.entities.EntityWanderer",
-            "id": 1,
-            "location": {
-                "coords": {
-                    "x": -1.3000032,
-                    "y": -1.1500002
-                },
-                "map": "src/jvmMain/resources/maps/0.json"
-            },
-            "animI": 0
         }
     ]
 }

@@ -31,8 +31,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import common.Action
-import common.Facing
 import common.entities.Chatter
 import common.entities.Entity
 import common.entities.EntityPlayer
@@ -148,7 +148,9 @@ class GameClient(
                     }
                     true
                 },
-            location = player.location,
+            showChunkBorders = true,
+            playerLocation = player.location,
+            boardLocation = gameState.location,
             tiles = gameState.tiles,
             entities = gameState.entities,
             onTap = { offset ->
@@ -365,7 +367,8 @@ class GameClient(
                         }
                         true
                     },
-                location = player.location,
+                playerLocation = player.location,
+                boardLocation = gameState.location,
                 tiles = gameState.tiles,
                 entities = gameState.entities,
                 decoration = {
@@ -449,7 +452,9 @@ class GameClient(
     @Composable
     private fun Board(
         modifier: Modifier = Modifier,
-        location: Location,
+        showChunkBorders: Boolean = false,
+        playerLocation: Location,
+        boardLocation: Location,
         tiles: List<List<Tile>>,
         entities: List<Entity>,
         onTap: (PointerInputScope.(Offset) -> Unit)? = null,
@@ -463,7 +468,7 @@ class GameClient(
             val playerOffsetX = (width - 1) / 2
             val playerOffsetY = (height - 1) / 2
 
-            val (playerX, playerY) = location.coords
+            val (playerX, playerY) = playerLocation.coords
             val displayXOffset = playerX % 1
             val displayYOffset = playerY % 1
             Box(
@@ -521,6 +526,46 @@ class GameClient(
                 }
             }
             decoration?.invoke(this)
+            if(showChunkBorders){
+                for(i in 0 .. width){
+                    val x = boardLocation.coords.x.toInt() + i
+                    if(x % 10 == 0){
+                        Box(
+                            modifier = Modifier
+                                .offset(x = ((displayXOffset * CELL_SIZE * -1) + i * CELL_SIZE).dp)
+                                .width(1.dp)
+                                .fillMaxHeight()
+                                .background(
+                                    when{
+                                        x == 0 -> Color.Red
+                                        x % 100 == 0 -> Color.Yellow
+                                        x % 20 == 0 -> Color.Green
+                                        else -> Color.Blue
+                                    }
+                                )
+                        )
+                    }
+                }
+                for(i in 0 .. height){
+                    val y = boardLocation.coords.y.toInt() + i
+                    if(y % 10 == 0){
+                        Box(
+                            modifier = Modifier
+                                .offset(y = ((displayYOffset * CELL_SIZE * -1) + i * CELL_SIZE).dp)
+                                .height(1.dp)
+                                .fillMaxWidth()
+                                .background(
+                                    when{
+                                        y == 0 -> Color.Red
+                                        y % 100 == 0 -> Color.Yellow
+                                        y % 20 == 0 -> Color.Green
+                                        else -> Color.Blue
+                                    }
+                                )
+                        )
+                    }
+                }
+            }
         }
     }
 

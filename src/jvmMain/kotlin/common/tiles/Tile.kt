@@ -87,6 +87,10 @@ enum class Tile(
     Sand(
         sprite = "sand",
         isSolid = false
+    ),
+    Void(
+        sprite = "void",
+        isSolid = true
     );
     companion object {
         fun getById(id: Int): Tile? {

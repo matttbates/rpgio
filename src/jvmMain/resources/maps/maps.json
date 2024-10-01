@@ -10,7 +10,7 @@
       "name": "1",
       "file": "src/jvmMain/resources/maps/1.json",
       "lightMode": "NATURAL",
-      "defaultTile": "Wall"
+      "defaultTile": "Void"
     }
   ]
 }
