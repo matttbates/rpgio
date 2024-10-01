@@ -5,6 +5,7 @@ import common.Location
 import server.World
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -25,14 +26,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.*
-import androidx.compose.ui.input.pointer.PointerInputScope
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import common.Action
+import common.Coords
 import common.entities.Chatter
 import common.entities.Entity
 import common.entities.EntityPlayer
@@ -136,6 +137,7 @@ class GameClient(
         var showTileSelection by remember { mutableStateOf(false) }
         val player = (gameState.entities.find { it is EntityPlayer && it.id == gameState.entityId } as EntityPlayer?)?:return
         val maps = world.getMaps()
+        var pointerCoords by remember { mutableStateOf(Coords(0f, 0f)) }
 
         Board(
             modifier = Modifier
@@ -165,6 +167,20 @@ class GameClient(
                     )
                 )
                 requester.requestFocus()
+            },
+            onHover = { offset ->
+                val x = (offset.x / CELL_SIZE.dp.toPx()).toInt() + gameState.location.coords.x.toInt()
+                val y = (offset.y / CELL_SIZE.dp.toPx()).toInt() + gameState.location.coords.y.toInt()
+                pointerCoords = Coords(x.toFloat(), y.toFloat())
+            },
+            decoration = {
+                Text(
+                    text = "(${pointerCoords.x.toInt()}, ${pointerCoords.y.toInt()})",
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(10.dp)
+                        .background(Color.White.copy(alpha = 0.5f))
+                )
             }
         )
 
@@ -449,6 +465,7 @@ class GameClient(
         }
     }
 
+    @OptIn(ExperimentalComposeUiApi::class)
     @Composable
     private fun Board(
         modifier: Modifier = Modifier,
@@ -458,6 +475,7 @@ class GameClient(
         tiles: List<List<Tile>>,
         entities: List<Entity>,
         onTap: (PointerInputScope.(Offset) -> Unit)? = null,
+        onHover: (AwaitPointerEventScope.(Offset) -> Unit)? = null,
         decoration: @Composable (BoxScope.() -> Unit)? = null
     ){
         Box(
@@ -491,6 +509,12 @@ class GameClient(
                         .pointerInput(Unit){
                             detectTapGestures{ offset ->
                                 onTap?.invoke(this, offset)
+                            }
+                        }
+                        //.hoverable(MutableInteractionSource())
+                        .onPointerEvent(eventType = PointerEventType.Move){ event ->
+                            event.changes.forEach { change ->
+                                onHover?.invoke(this, change.position)
                             }
                         }
                 ) {
